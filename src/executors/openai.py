@@ -13,9 +13,9 @@ from src.synth_machine_configs import (
     ModelConfig,
     calculate_input_tokens,
 )
-from core.settings import DEBUG
 
 
+DEBUG = os.environ.get("DEBUG", "")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
 openai_client = AsyncOpenAI(api_key=OPENAI_API_KEY)  # type: ignore
 
