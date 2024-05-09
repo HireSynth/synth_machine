@@ -5,7 +5,6 @@ from typing import TypedDict
 from openai import OpenAI, RateLimitError
 from opa_client.opa import OpaClient
 from urllib3.exceptions import LocationValueError, MaxRetryError
-
 from synth_machine import SAFETY_URL
 
 if SAFETY_URL:
