@@ -22,18 +22,18 @@ repos:
     - id: remove-crlf
 
 - repo: https://github.com/commitizen-tools/commitizen
-  rev: v3.24.0
+  rev: v3.25.0
   hooks:
     - id: commitizen
       stages: [commit-msg]
 
 - repo: https://github.com/RobertCraigie/pyright-python
-  rev: v1.1.359
+  rev: v1.1.362
   hooks:
     - id: pyright
 
 - repo: https://github.com/astral-sh/ruff-pre-commit
-  rev: v0.4.1
+  rev: v0.4.3
   hooks:
     - id: ruff
       args: [--fix]
