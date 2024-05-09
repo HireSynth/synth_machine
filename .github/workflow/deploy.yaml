@@ -1,0 +1,21 @@
+name: Upload Python Package
+on:
+  release:
+    types: [published]
+permissions:
+  contents: read
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    container: python:3.12-slim-bullseye
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install dependencies
+      run: |
+        pip install -U pip poetry
+        poetry install
+    - name: Publish package
+      uses: 
+      with:
+        user: __token__
+        password: ${{ secrets.PYPI_API_TOKEN }}
