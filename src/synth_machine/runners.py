@@ -1,4 +1,3 @@
-import os
 import logging
 from io import BytesIO
 from typing import Optional
@@ -6,35 +5,31 @@ from uuid import uuid4
 
 import jq
 import requests  # type: ignore
+from object_store import ObjectStore
 
-from apps.synth_api.models.blob import Blob
-
-GS_BUCKET_PREFIX = os.environ.get("GS_BUCKET_PREFIX", "")
+from synth_machine import STORAGE_PREFIX
 
 
-async def tool_runner(config: dict, return_key: Optional[str]) -> Optional[dict | str]:
-    response = requests.post(
-        config["tool_path"],
-        json=config["payload"],
-    )
+async def tool_runner(
+    store: ObjectStore, config: dict, return_key: Optional[str]
+) -> Optional[dict | str]:
+    try:
+        response = requests.post(
+            config["tool_path"],
+            json=config["payload"],
+        )
+    except Exception as e:
+        logging.warn(f"Error in running tool {e}")
+        return None
 
     if config["output_mime_types"]:
         output_format = response.headers["content-type"].split("/")[1]
         file_name = f"{uuid4()}.{output_format}"
-
-        blob = await Blob.create_blob(
-            file_name,
-            config["id"],
-            config["owner"],
-            BytesIO(response.content),
-        )
+        store.put(file_name, BytesIO(response.content))
         return {
-            "__blob": blob.id,  # type: ignore
             "file_name": file_name,
             "mime_type": output_format,
-            "url": blob.file.storage.url(blob.file.name)
-            if GS_BUCKET_PREFIX == "local"
-            else blob.file.name,
+            "url": f"{STORAGE_PREFIX}/{file_name}",
         }
     else:
         output = response.json()

@@ -1,17 +1,15 @@
 import json
 import logging
-import os
 from typing import AsyncGenerator, Optional
-from src.executors.base import BaseExecutor
-from src.synth_machine_configs import (
+from synth_machine.executors.base import BaseExecutor
+from synth_machine.machine_config import (
     ModelConfig,
     calculate_input_tokens,
 )
 import anthropic
 import tiktoken
+from synth_machine.executors import ANTHROPIC_API_KEY, DEBUG
 
-DEBUG = os.environ.get("DEBUG")
-ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
 enc = tiktoken.get_encoding("cl100k_base")
 
 client = anthropic.AsyncAnthropic(api_key=ANTHROPIC_API_KEY)  # type: ignore

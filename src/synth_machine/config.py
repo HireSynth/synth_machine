@@ -5,12 +5,9 @@ from typing import Optional, Tuple
 
 from jinja2 import Template, StrictUndefined
 
-from asgiref.sync import sync_to_async
-from src.models.llm import Llm
-from src.executor_factory import get_executor
-from src.executors.base import BaseExecutor
-from src.synth_machine_configs import ModelConfig
-from apps.tool_api.tool_factory import get_tool
+from synth_machine.executor_factory import get_executor
+from synth_machine.executors.base import BaseExecutor
+from synth_machine.machine_config import ModelConfig
 
 import tiktoken
 
@@ -23,13 +20,15 @@ class SynthConfig:
     model_config: ModelConfig
     system_prompt: Optional[str]
     user_prompt: str
-    token_multiplier: dict
 
 
 async def tool_setup(
-    output_definition: dict, inputs: dict, id: str, owner: str
+    output_definition: dict, inputs: dict, id: str, owner: str, tools: list
 ) -> dict:
-    tool = await get_tool(name=output_definition["tool"])
+    tool_search = [tool for tool in tools if tool.name == output_definition.get("tool")]
+    if not tool_search:
+        return {}
+    tool = tool_search[0]
     tool_path = f"{tool.api_endpoint}{output_definition['route']}"
     output_mime_types = [
         response_mime
@@ -90,30 +89,6 @@ def prompt_for_transition(
     return ("", f"Prompt template not provided, got {prompt_template}")
 
 
-async def get_token_multiplier(
-    model_config: ModelConfig,
-) -> Tuple[dict, Optional[str]]:
-    try:
-        llms = await sync_to_async(Llm.objects.filter)(
-            provider=model_config.executor, model_name=model_config.model_name
-        )
-        llm = await sync_to_async(llms.latest)("created_at")
-    except Llm.DoesNotExist:
-        logging.error(
-            f"LLM Multiplier does not exist for provider: {model_config.executor}, model: {model_config.model_name}"
-        )
-        return (
-            {},
-            f"LLM Multiplier does not exist for provider: {model_config.executor}, model: {model_config.model_name}",
-        )
-
-    return {
-        "input": llm.input_multiplier,
-        "output": llm.output_multiplier,
-        "id": llm.id,  # type: ignore
-    }, None
-
-
 async def prompt_setup(
     output_definition: dict, inputs: dict, default_model_config: dict
 ) -> Tuple[Optional[SynthConfig], Optional[str]]:
@@ -141,9 +116,6 @@ async def prompt_setup(
 
     logging.debug(f"Model config {model_config}")
     executor = get_executor(name=model_config.executor)
-    token_multiplier, err = await get_token_multiplier(model_config)
-    if err:
-        return (None, err)
 
     return (
         SynthConfig(
@@ -151,7 +123,6 @@ async def prompt_setup(
             model_config=model_config,
             system_prompt=system_prompt,
             user_prompt=user_prompt,
-            token_multiplier=token_multiplier,
         ),
         None,
     )
