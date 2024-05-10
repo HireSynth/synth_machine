@@ -1,29 +1,28 @@
-import os
 import logging
 from typing import AsyncGenerator, Optional
-
 from openai import AsyncOpenAI
 from openai.types.chat import (
     ChatCompletionNamedToolChoiceParam,
     ChatCompletionToolParam,
 )
 
-from src.executors.base import BaseExecutor
-from src.synth_machine_configs import (
+from synth_machine.executors.base import BaseExecutor
+from synth_machine.machine_config import (
     ModelConfig,
     calculate_input_tokens,
 )
+from synth_machine.executors import TOGETHER_API_KEY, DEBUG
 
 
-DEBUG = os.environ.get("DEBUG", "")
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "")
-openai_client = AsyncOpenAI(api_key=OPENAI_API_KEY)  # type: ignore
+together_client = AsyncOpenAI(
+    api_key=TOGETHER_API_KEY, base_url="https://api.together.xyz"
+)  # type: ignore
 
 
-class OpenAIExecutor(BaseExecutor):
+class TogetherAIExecutor(BaseExecutor):
     @staticmethod
     def post_process(output: dict) -> dict:
-        return output.get("output", {})
+        return output[0]["arguments"].get("output", {})
 
     async def generate(  # type: ignore
         self,
@@ -45,7 +44,16 @@ class OpenAIExecutor(BaseExecutor):
             {"role": "user", "content": str(user_prompt)},
         )
 
-        if function_calling := (json_schema and json_schema.get("type") != "string"):
+        if (
+            json_schema
+            and json_schema.get("type") != "string"
+            and model_config.model_name
+            in [
+                "mistralai/Mixtral-8x7B-Instruct-v0.1",
+                "mistralai/Mistral-7B-Instruct-v0.1",
+                "togethercomputer/CodeLlama-34b-Instruct",
+            ]
+        ):
             tools = [
                 ChatCompletionToolParam(
                     {
@@ -65,7 +73,7 @@ class OpenAIExecutor(BaseExecutor):
                 {"type": "function", "function": {"name": "output"}}
             )
 
-            response = await openai_client.chat.completions.create(
+            response = await together_client.chat.completions.create(
                 model=model_config.model_name,
                 messages=messages,  # type: ignore
                 temperature=model_config.temperature,
@@ -76,7 +84,7 @@ class OpenAIExecutor(BaseExecutor):
                 user=user,
             )
         else:
-            response = await openai_client.chat.completions.create(
+            response = await together_client.chat.completions.create(
                 model=model_config.model_name,
                 messages=messages,  # type: ignore
                 temperature=model_config.temperature,
@@ -88,14 +96,10 @@ class OpenAIExecutor(BaseExecutor):
         input_tokens = calculate_input_tokens(system_prompt, user_prompt)
         yield ("", {"tokens": input_tokens, "token_type": "input"})  # type: ignore
 
-        logging.debug(f"OpenAI Response: {response}")
+        logging.debug("TogetherAI Response:")
         async for chunk in response:
             if not chunk.choices[0].finish_reason:
-                token = (
-                    chunk.choices[0].delta.tool_calls[0].function.arguments
-                    if function_calling
-                    else chunk.choices[0].delta.content
-                )
+                token = chunk.choices[0].delta.content
                 if DEBUG:
                     print(token, end="", flush=True)
                 else:

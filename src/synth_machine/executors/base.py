@@ -1,6 +1,6 @@
 from typing import AsyncGenerator, Optional
 
-from src.synth_machine_configs import ModelConfig
+from synth_machine.machine_config import ModelConfig
 
 
 class BaseExecutor:

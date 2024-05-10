@@ -27,7 +27,7 @@ Full Changelog: [{{ previous.version }}...{{ version }}]({{ self::remote_url() }
   {% raw %}\n{% endraw %}\
 {% endif %}\
 {%- macro remote_url() -%}
-  https://gitlab.com/hiresynth/buttercup
+https://github.com/HireSynth/synth_machine
 {%- endmacro -%}
 """
 # remove the leading and trailing whitespace from the template

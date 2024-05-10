@@ -1,13 +1,15 @@
 import logging
 from enum import Enum
-from typing import Optional, TypedDict
+from typing import TypedDict
 
 from openai import OpenAI, RateLimitError
 from opa_client.opa import OpaClient
 from urllib3.exceptions import LocationValueError, MaxRetryError
-from core.settings import SAFETY_URL
 
-opa_client = OpaClient(host=SAFETY_URL, port=8181)
+from synth_machine import SAFETY_URL
+
+if SAFETY_URL:
+    opa_client = OpaClient(host=SAFETY_URL, port=8181)
 
 
 class Threshold(Enum):
@@ -55,11 +57,8 @@ default_response = {
 
 
 class Safety:
-    def __init__(
-        self, user_thresholds: Optional[SafetyInput], synth_thresholds: SafetyInput
-    ):
-        self.synth_thresholds = synth_thresholds
-        self.user_thresholds = user_thresholds if user_thresholds else synth_thresholds
+    def __init__(self, thresholds: SafetyInput):
+        self.thresholds = thresholds
 
     def check(
         self,
@@ -78,7 +77,8 @@ class Safety:
                 logging.error("No safety provider specified")
                 return default_response
 
-        # Call policy server
+        if not SAFETY_URL:
+            return default_response
         try:
             safety_result = opa_client.check_permission(
                 input_data={
@@ -86,8 +86,8 @@ class Safety:
                         "message": {
                             "moderation_scores": scores,  # type: ignore
                         },
-                        "user_thresholds": self.user_thresholds,
-                        "synth_thresholds": self.synth_thresholds,
+                        "user_thresholds": self.thresholds,
+                        "synth_thresholds": self.thresholds,
                     }
                 },
                 policy_name="policies/policy.rego",

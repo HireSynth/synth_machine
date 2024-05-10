@@ -3,21 +3,24 @@ import logging
 import itertools
 from enum import StrEnum
 from json.decoder import JSONDecodeError
-from typing import Any, List, Optional
+from typing import List, Optional
 
-from partial_json_parser import loads, OBJ
 from jsonschema import validate  # type: ignore
 from jsonschema.exceptions import ValidationError  # type: ignore
+from object_store import ObjectStore
+from partial_json_parser import loads, OBJ
 from transitions import Machine
 
-from src.safety import Safety, SafetyInput, SAFETY_DEFAULTS
-from src.synth_config import (
+from synth_machine.safety import Safety, SafetyInput, SAFETY_DEFAULTS
+from synth_machine.config import (
     prompt_setup,
     prompt_for_transition,
     tool_setup,
 )
-from src.synth_runners import jq_runner, tool_runner
-from src.synth_cost import BaseCost
+from synth_machine.runners import jq_runner, tool_runner
+from synth_machine.cost import BaseCost
+
+from synth_machine import STORAGE_OPTIONS, STORAGE_PREFIX, TOOLS
 
 
 class Model:
@@ -62,10 +65,11 @@ class Synth(BaseCost):
         initial_state: str,
         states: List[dict],
         transitions: List[dict],
-        default_model_config: dict,
-        synth_thresholds: Optional[SafetyInput] = None,
-        user_thresholds: Optional[SafetyInput] = None,
+        default_model_config: dict = {},
+        safety_thresholds: Optional[SafetyInput] = None,
         memory: dict = {},
+        store: ObjectStore = ObjectStore(STORAGE_PREFIX, STORAGE_OPTIONS),
+        tools: list = TOOLS,
     ) -> None:
         self.session_id = session_id
         self.synth_id = synth_id
@@ -83,7 +87,7 @@ class Synth(BaseCost):
         )
         self.raw_states = states
         self.state_names = list(map(lambda s: s["name"], self.raw_states))
-        self.memory: dict[str, Any] = memory
+        self.memory: dict = memory
         self._model = Model()
         self.default_model_config = default_model_config
         self._machine = Machine(
@@ -94,12 +98,11 @@ class Synth(BaseCost):
             transitions=self.transitions,
         )
         self.safety = Safety(
-            user_thresholds=user_thresholds,
-            synth_thresholds=(
-                synth_thresholds if synth_thresholds else SAFETY_DEFAULTS
-            ),
+            thresholds=(safety_thresholds if safety_thresholds else SAFETY_DEFAULTS),
         )
         self.buffer = {}
+        self.store = store
+        self.tools = tools
 
     def current_state(self) -> str:
         return self._model.state  # type: ignore
@@ -224,30 +227,37 @@ class Synth(BaseCost):
                 ]
             case OperationPriority.TOOL:
                 config = await tool_setup(
+                    tools=self.tools,
                     output_definition=output_definition,
                     inputs=inputs,
                     id=str(self.session_id),
                     owner=str(self.owner),
                 )
                 predicted_json = await tool_runner(
+                    store=self.store,
                     config=config,
                     return_key=output_definition.get("return_key"),
                 )
+
+                if not predicted_json:
+                    yield [
+                        FailureState.FAILED,
+                        output_key,
+                        f"Failed to call tool {config}",
+                    ]
+
                 logging.debug(f"Tool output: {predicted_json}")
                 if isinstance(self.memory.get(output_key, {}), list):
                     self.memory[output_key].append(predicted_json)
                 else:
                     self.memory[output_key] = predicted_json
-                token_cost = (
-                    config["tokens"]["execution"] * config["tokens"]["multiplier"]
-                )
-                tool_id = config.get("tool_id")
-                token_usage = await self.calculate_tool_token_usage(tool_id, token_cost)
+                token_cost = config["tokens"]["execution"]
+                token_usage = await self.calculate_tool_token_usage(config, token_cost)
                 yield [
                     "TOOL_OUTPUT",
                     output_key,
                     token_usage,
-                    tool_id,
+                    config.get("tool_id"),
                 ]
                 yield [
                     YieldTasks.SET_MEMORY,
@@ -299,7 +309,7 @@ class Synth(BaseCost):
                     logging.debug(
                         f"🤖 Execution started ({config.model_config.executor})"
                     )
-                    llm_id = config.token_multiplier["id"]
+                    llm_name = config.model_config.model_name
                     tokens = {
                         "input": 0,
                         "output": 0,
@@ -313,11 +323,8 @@ class Synth(BaseCost):
                     ):  # type: ignore
                         predicted = f"{predicted}{str(token)}"
                         stage = token_info["token_type"]
-                        token_cost_per_chunk = int(
-                            round(
-                                config.token_multiplier.get(stage)
-                                * token_info["tokens"]
-                            )
+                        token_cost_per_chunk = self.calculate_chunk_cost(
+                            config, token_info["tokens"]
                         )
                         tokens[stage] += token_cost_per_chunk
                         yield [
@@ -327,10 +334,10 @@ class Synth(BaseCost):
                             token_cost_per_chunk,
                             token_info["tokens"],
                             stage,
-                            llm_id,
+                            llm_name,
                         ]
                     await self.calculate_prompt_token_usage(
-                        llm_id,
+                        llm_name,
                         input_tokens=tokens["input"],
                         output_tokens=tokens["output"],
                     )  # type: ignore
