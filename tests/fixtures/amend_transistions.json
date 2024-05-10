@@ -1,0 +1,22 @@
+[
+  {
+      "trigger": "1",
+      "source": "theme",
+      "dest": "select",
+      "outputs": [
+          {"key": "chat_history", "append": "a"}
+      ]
+  },
+  {
+      "trigger": "2",
+      "source": "select",
+      "dest": "dnd",
+      "outputs": [{"key": "chat_history", "append": ["a", "b"]}]
+  },
+  {
+      "trigger": "3",
+      "source": "dnd",
+      "dest": "select",
+      "outputs": [{"key": "chat_history", "append": ["a", "b"]}]
+  }
+]

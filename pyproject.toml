@@ -12,7 +12,6 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = ">=3.11,<4.0"
 anthropic = "^0.25.1"
-google-cloud-aiplatform = "^1.38.1"
 jinja2 = "^3.1.2"
 jq = "^1.6.0"
 jsonschema = "^4.19.2"
@@ -24,6 +23,7 @@ pydantic = "^2.7.1"
 requests = "^2.31.0"
 tiktoken = "0.6.0"
 transitions = "^0.9.0"
+urllib3 = "*"
 
 [tool.poetry.group.dev.dependencies]
 commitizen = "^3.8.0"
@@ -32,7 +32,6 @@ pre-commit = "^3.6.2"
 pyright = "^1.1.326"
 pyyaml = "^6.0.1"
 ruff = "^0.4.3"
-
 
 [tool.pyright]
 reportMissingImports = false

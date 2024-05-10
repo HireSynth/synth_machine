@@ -1,0 +1,11 @@
+[
+  {
+      "trigger": "1",
+      "source": "theme",
+      "dest": "select",
+      "inputs": [{"key": "data"}, {"key": "images"}, {"key": "fish"}],
+      "outputs": [
+          {"key": "interleaved", "interleave": ["data", "images", "fish"]}
+      ]
+  }
+]

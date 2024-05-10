@@ -1,4 +1,4 @@
-name: main
+name: pre-commit
 on:
   pull_request:
 jobs:

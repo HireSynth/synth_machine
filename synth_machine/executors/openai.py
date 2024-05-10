@@ -7,17 +7,19 @@ from openai.types.chat import (
     ChatCompletionToolParam,
 )
 
-from synth_machine.executors.base import BaseExecutor
+from synth_machine.executors.base import BaseExecutor, singleton
 from synth_machine.machine_config import (
     ModelConfig,
     calculate_input_tokens,
 )
 from synth_machine.executors import OPENAI_API_KEY, DEBUG
 
-openai_client = AsyncOpenAI(api_key=OPENAI_API_KEY)  # type: ignore
 
-
+@singleton
 class OpenAIExecutor(BaseExecutor):
+    def __init__(self) -> None:
+        self.client = AsyncOpenAI(api_key=OPENAI_API_KEY)  # type: ignore
+
     @staticmethod
     def post_process(output: dict) -> dict:
         return output.get("output", {})
@@ -62,7 +64,7 @@ class OpenAIExecutor(BaseExecutor):
                 {"type": "function", "function": {"name": "output"}}
             )
 
-            response = await openai_client.chat.completions.create(
+            response = await self.client.chat.completions.create(
                 model=model_config.model_name,
                 messages=messages,  # type: ignore
                 temperature=model_config.temperature,
@@ -73,7 +75,7 @@ class OpenAIExecutor(BaseExecutor):
                 user=user,
             )
         else:
-            response = await openai_client.chat.completions.create(
+            response = await self.client.chat.completions.create(
                 model=model_config.model_name,
                 messages=messages,  # type: ignore
                 temperature=model_config.temperature,

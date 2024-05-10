@@ -1,7 +1,7 @@
 import json
 import logging
 from typing import AsyncGenerator, Optional
-from synth_machine.executors.base import BaseExecutor
+from synth_machine.executors.base import BaseExecutor, singleton
 from synth_machine.machine_config import (
     ModelConfig,
     calculate_input_tokens,
@@ -10,12 +10,13 @@ import anthropic
 import tiktoken
 from synth_machine.executors import ANTHROPIC_API_KEY, DEBUG
 
-enc = tiktoken.get_encoding("cl100k_base")
 
-client = anthropic.AsyncAnthropic(api_key=ANTHROPIC_API_KEY)  # type: ignore
-
-
+@singleton
 class AnthropicExecutor(BaseExecutor):
+    def __init__(self) -> None:
+        self.enc = tiktoken.get_encoding("cl100k_base")
+        self.client = anthropic.AsyncAnthropic(api_key=ANTHROPIC_API_KEY)  # type: ignore
+
     @staticmethod
     def post_process(output: dict) -> dict:
         return output
@@ -70,7 +71,7 @@ class AnthropicExecutor(BaseExecutor):
             else:
                 tools = model_config.tool_options
 
-            tool_response = await client.beta.tools.messages.create(
+            tool_response = await self.client.beta.tools.messages.create(
                 model=model_config.model_name,
                 system=system_prompt,
                 max_tokens=model_config.max_tokens,
@@ -97,7 +98,7 @@ class AnthropicExecutor(BaseExecutor):
                 },
             )  # type: ignore
         else:
-            response = await client.messages.create(
+            response = await self.client.messages.create(
                 model=model_config.model_name,
                 system=system_prompt,
                 messages=messages,  # type: ignore

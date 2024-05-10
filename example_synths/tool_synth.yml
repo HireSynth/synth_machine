@@ -1,0 +1,85 @@
+states:
+  - name: Start
+  - name: tools_as_apis
+  - name: mixing_tools_with_llms
+  - name: file_output_tools
+initial_state: Start
+tools:
+  - name: hello_world
+  - name: TTS
+transitions:
+  - trigger: say_hello
+    source: Start
+    dest: tools_as_apis
+    inputs:
+      - key: animal
+        description: Favourite animal
+        ui_type: text-field
+        schema:
+          type: string
+    outputs:
+      - key: hello_animal
+        tool: hello_world
+        route: /api/hello-world
+        input_name_map:
+          text: animal
+        return_key: message
+  - trigger: say_hello_2
+    source: tools_as_apis
+    dest: tools_as_apis
+    inputs:
+      - key: animal
+        description: Favourite animal
+        schema:
+          type: string
+    outputs:
+      - key: hello_animal
+        tool: hello_world
+        route: /api/hello-world
+        input_name_map:
+          text: animal
+        return_key: message
+  - trigger: create_ideas
+    source: tools_as_apis
+    dest: mixing_tools_with_llms
+    inputs:
+      - key: hello_animal
+        description: Tool Response
+        ui_type: textarea
+        schema:
+          type: string
+      - key: animal
+        schema:
+          type: string
+      - key: animal_2
+        description: Idea 2
+        ui_type: text-field
+        schema:
+          type: string
+    outputs:
+      - key: animal_idea
+        prompt: >
+          Given two animal species, provide an interesting fact about both of
+          them in a single sentence. Only respond in quotations.
+
+          Animal 1: {{ animal }} Animal 2: {{ animal_2 }} Fact:
+        schema:
+          type: string
+  - trigger: synthesise
+    source: mixing_tools_with_llms
+    dest: idea_spoken
+    inputs:
+      - key: animal_idea
+        description: Generated Fact
+        ui_type: textarea
+        schema:
+          type: string
+    outputs:
+      - key: spoken_idea
+        tool: TTS
+        route: /api/text-to-speech
+        input_name_map:
+          input: animal_idea
+  - trigger: reset
+    source: idea_spoken
+    dest: Start
