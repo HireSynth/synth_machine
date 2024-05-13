@@ -1,7 +1,8 @@
-name: Upload Python Package
+name: Upload To PyPi
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+    - "*"
 permissions:
   contents: read
 jobs:
