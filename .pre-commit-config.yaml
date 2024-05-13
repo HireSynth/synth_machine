@@ -1,25 +1,36 @@
+default_install_hook_types: [pre-commit, commit-msg]
 repos:
 - repo: https://github.com/pre-commit/pre-commit-hooks
   rev: v4.6.0
   hooks:
     - id: check-added-large-files
+      stages: [pre-commit]
     - id: check-case-conflict
+      stages: [pre-commit]
     - id: check-merge-conflict
+      stages: [pre-commit]
     - id: detect-private-key
+      stages: [pre-commit]
     - id: forbid-new-submodules
+      stages: [pre-commit]
     - id: check-builtin-literals
+      stages: [pre-commit]
 
 - repo: https://github.com/jumanjihouse/pre-commit-hooks
   rev: 3.0.0
   hooks:
     - id: forbid-binary
+      stages: [pre-commit]
     - id: git-dirty
+      stages: [pre-commit]
 
 - repo: https://github.com/Lucas-C/pre-commit-hooks
   rev: v1.5.5
   hooks:
     - id: forbid-crlf
+      stages: [pre-commit]
     - id: remove-crlf
+      stages: [pre-commit]
 
 - repo: https://github.com/commitizen-tools/commitizen
   rev: v3.25.0
@@ -31,10 +42,13 @@ repos:
   rev: v1.1.362
   hooks:
     - id: pyright
+      stages: [pre-commit]
 
 - repo: https://github.com/astral-sh/ruff-pre-commit
   rev: v0.4.3
   hooks:
     - id: ruff
       args: [--fix]
+      stages: [pre-commit]
     - id: ruff-format
+      stages: [pre-commit]

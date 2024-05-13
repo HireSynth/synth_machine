@@ -166,4 +166,5 @@ cython_debug/
 .idea
 .vscode
 requirements.txt
-
+*lcov
+report.txt
