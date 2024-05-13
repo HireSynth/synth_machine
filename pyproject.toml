@@ -8,6 +8,7 @@ authors = [
   "COO <coo@hiresynth.ai>"
 ]
 readme = "README.md"
+license = "GPL-3.0-or-later"
 
 [tool.poetry.dependencies]
 python = ">=3.11,<4.0"

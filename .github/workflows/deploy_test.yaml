@@ -1,8 +1,8 @@
-name: Upload To PyPi
+name: Upload To Test PyPi
 on:
   push:
-    tags:
-    - "*"
+    branches:
+      - main
 permissions:
   contents: read
 jobs:
@@ -17,12 +17,12 @@ jobs:
         with:
           python-version: '3.12'
           cache: pip
-      - name: Publish package to pypi
+      - name: Publish package to testpyi
         run: |
           pip install -U pip poetry
           poetry install --sync
-          poetry config repositories.pypi https://upload.pypi.org/legacy/
-          poetry config pypi-token.pypi $(echo $POETRY_PYPI_TOKEN_PROD)
-          poetry publish --skip-existing --build --repository pypi
+          poetry config repositories.testpypi https://test.pypi.org/legacy/
+          poetry config pypi-token.testpypi $(echo $POETRY_PYPI_TOKEN_TEST)
+          poetry publish --skip-existing --build --repository testpypi
         env:
-          POETRY_PYPI_TOKEN_PROD: ${{ secrets.POETRY_PYPI_TOKEN_PROD }}
+          POETRY_PYPI_TOKEN_TEST: ${{ secrets.POETRY_PYPI_TOKEN_TEST }}
