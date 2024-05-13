@@ -1,0 +1,15 @@
+[
+  {
+      "trigger": "1",
+      "source": "theme",
+      "dest": "select",
+      "inputs": [{"key": "data"}],
+      "outputs": [
+          {
+              "key": "output",
+              "prompt": "I am an automated chicken: {{a}}",
+              "schema": {"type": "array", "items": {"type": "string"}}
+          }
+      ]
+  }
+]

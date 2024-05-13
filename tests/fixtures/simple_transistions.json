@@ -1,0 +1,12 @@
+[
+  {
+      "trigger": "1",
+      "source": "theme",
+      "dest": "select"
+  },
+  {
+      "trigger": "2",
+      "source": "select",
+      "dest": "dnd"
+  }
+]

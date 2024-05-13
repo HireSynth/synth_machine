@@ -14,8 +14,10 @@ jobs:
       run: |
         pip install -U pip poetry
         poetry install
-    - name: Publish package
-      uses: 
-      with:
-        user: __token__
-        password: ${{ secrets.PYPI_API_TOKEN }}
+    - name: Publish package to testpyi
+      run: |
+        poetry config repositories.testpypi https://test.pypi.org/legacy/
+        poetry config pypi-token.testpypi $(echo $POETRY_PYPI_TOKEN_TEST)
+        poetry publish --build --repository testpypi
+      env:
+        POETRY_PYPI_TOKEN_TEST: ${{ secrets.POETRY_PYPI_TOKEN_TEST }}

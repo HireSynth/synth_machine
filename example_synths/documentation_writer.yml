@@ -1,0 +1,240 @@
+states:
+  - name: existing_docs_notes
+  - name: doc_outlines
+  - name: doc_content
+    interface:
+      - key: completed_document
+        componentName: Markdown
+transitions:
+  - dest: doc_outlines
+    inputs:
+      - key: example_1
+        schema:
+          type: string
+        ui_type: textarea
+        description: Provide any completed artifact, example or configuration
+      - key: existing_readme
+        schema:
+          type: string
+        ui_type: textarea
+        description: Do you have any existing README files?
+      - key: existing_docs_notes
+        schema:
+          type: string
+        ui_type: textarea
+        description: Do you have any existing notes on your product or service?
+    source: existing_docs_notes
+    outputs:
+      - key: document_suggestions
+        prompt: |
+          ## Existing Documentation
+
+          ### Existing Documentation Notes
+          {{ existing_docs_notes }}
+
+          ### Current Readme File
+          {{ existing_readme }}
+
+          ### Example Output
+
+          ```
+          {{ example_1 }}
+          ```
+
+          ## Diátaxis Docs
+
+          ### JSON Response Docs list
+        schema:
+          type: array
+          items:
+            type: object
+            required:
+              - document_name
+              - documentation_type
+              - high_level_description
+            properties:
+              document_name:
+                type: string
+                description: Document Name
+              documentation_type:
+                type: string
+                description: >-
+                  One of {"tutorials", "how_to_guides", "reference",
+                  "explanation"  }
+              high_level_description:
+                type: string
+                description: Provide a high level description of the proposed document
+          minItems: 5
+        system_prompt: >
+          You are a distinguished technical writer who is an expert in the
+          diátaxis technique for writing user documentation.
+
+          You are tasked with generating user facing documentation about a
+          product, including tutorials, quickstarts and deep dive documentation.
+          First you must propose a list of all documents required in order to
+          provide complete diátaxis documentation.
+
+          You will be provided existing documentation and synth definition files
+          for deep context.
+
+          Only respond in the following valid JSON format: [
+            {
+                "document_name": str, # document name
+                "documentation_type": str, # One of {"tutorials", "how_to_guides", "reference", "explanation"  }
+                "high_level_description": str, # Provide a high level description of the proposed document
+            }
+          ]
+    trigger: create_documentation_ideas
+  - dest: doc_content
+    inputs:
+      - key: doc
+        ui_type: definition-list-select
+        ui_params:
+          values: document_suggestions.*
+          textKeys:
+            - high_level_description
+          titleKey: document_name
+          subtitleKey: documentation_type
+      - key: example_1
+        schema:
+          type: string
+      - key: existing_readme
+        schema:
+          type: string
+      - key: existing_docs_notes
+        schema:
+          type: string
+    source: doc_outlines
+    outputs:
+      - key: completed_document
+        prompt: |
+          # Existing Documentation
+
+          ## Existing Documentation Notes
+          {{ existing_docs_notes }}
+
+          ## Current Readme File
+          {{ existing_readme }}
+
+          ## Example Output
+
+          ```
+          {{ example_1 }}
+          ```
+
+          # Diátaxis Docs
+          ## {{ doc[0]["document_name"] }}
+          ### High Level Description
+          {{ doc[0]["high_level_description"] }}
+
+          ### Complete Markdown Documentation
+          ```markdown
+        schema:
+          type: string
+        system_prompt: >
+          You are a distinguished technical writer who is an expert in the
+          diátaxis technique for writing user documentation.
+
+          You are tasked with generating user facing documentation about a
+          product, including tutorials, quickstarts and deep dive documentation.
+
+          You now must write a {{ doc[0]["documentation_type"] }} titled {{
+          doc[0]["document_name"] }}.
+
+          You will be provided copies of the existing documentation, as well as
+          two example synth definitions.
+
+          The response must be in markdown and be accurate to the existing
+          documentation and example synths.
+    trigger: generate_document
+  - dest: doc_content
+    inputs:
+      - key: doc
+        schema:
+          type: array
+          items:
+            type: object
+            required:
+              - document_name
+              - documentation_type
+              - high_level_description
+            properties:
+              document_name:
+                type: string
+              documentation_type:
+                type: string
+              high_level_description:
+                type: string
+          minItems: 1
+      - key: example_1
+        schema:
+          type: string
+      - key: existing_readme
+        schema:
+          type: string
+      - key: completed_document
+        schema:
+          type: string
+      - key: existing_docs_notes
+        schema:
+          type: string
+      - key: document_ammendments
+        schema:
+          type: string
+        ui_type: textarea
+        description: Any ammendments needed to the document?
+    source: doc_content
+    outputs:
+      - key: completed_document
+        prompt: |
+          # Existing Documentation
+
+          ## Existing Documentation Notes
+          {{ existing_docs_notes }}
+
+          ## 1st Attempt at Document
+          {{ existing_readme }}
+
+          ## Example Output
+          ```
+          {{ example_1 }}
+          ```
+
+          # Diátaxis Docs
+          ## {{ doc[0]["document_name"] }}
+          ### High Level Description
+          {{ doc[0]["high_level_description"] }}
+
+          ## Document Draft
+          ```markdown
+          {{ completed_document }}
+          ```
+
+          ### Important User Feedback
+          "{{ document_ammendments }}"
+
+          ### Complete Markdown Documentation
+          ```markdown
+        schema:
+          type: string
+        system_prompt: >
+          You are a distinguished technical writer who is an expert in the
+          diátaxis technique for writing user documentation.
+
+          You are tasked with generating user facing documentation about a
+          product, including tutorials, quickstarts and deep dive documentation.
+
+          You now must write a {{ doc[0]["documentation_type"] }} titled {{
+          doc[0]["document_name"] }}.
+
+          You will be provided copies of the existing documentation, as well as
+          two example synth definitions.
+
+          The response must be in markdown and be accurate to the existing
+          documentation and example synths.
+    trigger: amend_document
+    default: true
+  - dest: doc_outlines
+    source: doc_content
+    trigger: to_outlines
+initial_state: existing_docs_notes

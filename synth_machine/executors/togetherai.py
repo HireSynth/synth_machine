@@ -6,7 +6,7 @@ from openai.types.chat import (
     ChatCompletionToolParam,
 )
 
-from synth_machine.executors.base import BaseExecutor
+from synth_machine.executors.base import BaseExecutor, singleton
 from synth_machine.machine_config import (
     ModelConfig,
     calculate_input_tokens,
@@ -14,12 +14,13 @@ from synth_machine.machine_config import (
 from synth_machine.executors import TOGETHER_API_KEY, DEBUG
 
 
-together_client = AsyncOpenAI(
-    api_key=TOGETHER_API_KEY, base_url="https://api.together.xyz"
-)  # type: ignore
-
-
+@singleton
 class TogetherAIExecutor(BaseExecutor):
+    def __init__(self) -> None:
+        self.client = AsyncOpenAI(
+            api_key=TOGETHER_API_KEY, base_url="https://api.together.xyz"
+        )  # type: ignore
+
     @staticmethod
     def post_process(output: dict) -> dict:
         return output[0]["arguments"].get("output", {})
@@ -73,7 +74,7 @@ class TogetherAIExecutor(BaseExecutor):
                 {"type": "function", "function": {"name": "output"}}
             )
 
-            response = await together_client.chat.completions.create(
+            response = await self.client.chat.completions.create(
                 model=model_config.model_name,
                 messages=messages,  # type: ignore
                 temperature=model_config.temperature,
@@ -84,7 +85,7 @@ class TogetherAIExecutor(BaseExecutor):
                 user=user,
             )
         else:
-            response = await together_client.chat.completions.create(
+            response = await self.client.chat.completions.create(
                 model=model_config.model_name,
                 messages=messages,  # type: ignore
                 temperature=model_config.temperature,

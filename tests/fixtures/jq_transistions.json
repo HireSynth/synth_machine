@@ -1,0 +1,11 @@
+[
+  {
+      "trigger": "1",
+      "source": "theme",
+      "dest": "select",
+      "inputs": [{"key": "data"}],
+      "outputs": [
+          {"key": "flattened", "jq": ".acts_condensed[][]"}
+      ]
+  }
+]

@@ -1,0 +1,21 @@
+[
+  {
+      "trigger": "1",
+      "source": "theme",
+      "dest": "select",
+      "outputs": [
+          {
+              "key": "output",
+              "prompt": "I am an automated chicken: {{a}}",
+              "schema": {
+                  "type": "string"
+              }
+          }
+      ]
+  },
+  {
+      "trigger": "2",
+      "source": "select",
+      "dest": "dnd"
+  }
+]

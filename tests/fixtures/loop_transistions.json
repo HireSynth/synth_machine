@@ -1,0 +1,22 @@
+[
+  {
+      "trigger": "1",
+      "source": "theme",
+      "dest": "select",
+      "inputs": [{"key": "data"}],
+      "outputs": [
+          {
+              "key": "loop",
+              "prompt": "I am an automated chicken: {{f}}",
+              "schema": {
+                  "type": "string"
+              },
+              "loop": {
+                  "matrix": [
+                      {"f": "data"}
+                  ]
+              }
+          }
+      ]
+  }
+]

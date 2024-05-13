@@ -1,0 +1,20 @@
+name: tests
+on:
+  pull_request:
+jobs:
+  pre-commit:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        set-safe-directory: true
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: pip
+    - name: tests
+      run: |
+        pip install -U pip poetry deptry
+        poetry install
+        poetry run python -m unittest discover
+        poetry run deptry .
