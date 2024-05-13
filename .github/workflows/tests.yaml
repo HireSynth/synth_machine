@@ -1,4 +1,8 @@
 name: tests
+permissions:
+  actions: read
+  contents: read
+  pull-requests: write
 on:
   pull_request:
 jobs:
@@ -15,6 +19,19 @@ jobs:
     - name: tests
       run: |
         pip install -U pip poetry deptry
-        poetry install
-        poetry run python -m unittest discover
+        poetry install --sync
         poetry run deptry .
+        poetry run coverage run -m unittest discover
+        poetry run coverage report --format=markdown > report.txt
+    - name: Report Coverage
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const fs = require('fs');
+          const coverage = fs.readFileSync('./report.txt', 'utf8');
+          github.rest.issues.createComment({
+            issue_number: context.issue.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: coverage
+          })
