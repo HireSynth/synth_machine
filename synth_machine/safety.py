@@ -73,7 +73,7 @@ class Safety:
                     return default_response
                 scores = dict(response.results[0].category_scores)
             case _:
-                logging.error("No safety provider specified")
+                logging.warning("No safety provider specified")
                 return default_response
 
         if not SAFETY_URL:
