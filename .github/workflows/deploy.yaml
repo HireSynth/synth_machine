@@ -7,17 +7,21 @@ permissions:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    container: python:3.12-slim-bullseye
     steps:
-    - uses: actions/checkout@v4
-    - name: Install dependencies
-      run: |
-        pip install -U pip poetry
-        poetry install
-    - name: Publish package to testpyi
-      run: |
-        poetry config repositories.testpypi https://test.pypi.org/legacy/
-        poetry config pypi-token.testpypi $(echo $POETRY_PYPI_TOKEN_TEST)
-        poetry publish --build --repository testpypi
-      env:
-        POETRY_PYPI_TOKEN_TEST: ${{ secrets.POETRY_PYPI_TOKEN_TEST }}
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Publish package to testpyi
+        run: |
+          pip install -U pip poetry
+          poetry install --sync
+          poetry config repositories.testpypi https://test.pypi.org/legacy/
+          poetry config pypi-token.testpypi $(echo $POETRY_PYPI_TOKEN_TEST)
+          poetry publish --build --repository testpypi
+        env:
+          POETRY_PYPI_TOKEN_TEST: ${{ secrets.POETRY_PYPI_TOKEN_TEST }}

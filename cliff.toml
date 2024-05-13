@@ -14,8 +14,8 @@ body = """
     | unique(attribute="message")
     | filter(attribute="merge_commit", value=false) %}
         - {{commit.scope}}: \
-            {{ commit.message }}\
-             [{{ commit.id | truncate(length=7, end="") }}]({{ self::remote_url() }}/commit/{{ commit.id }})\
+            {{ commit.message }} \
+             [{{ commit.id | truncate(length=7, end="") }}]({{ self::remote_url() }}/commit/{{ commit.id }}) \
              by [{{ commit.author.name }}](https://github.com/{{ commit.author.name }})\
     {%- endfor -%}
 {% endfor %}
