@@ -28,7 +28,7 @@ transitions = "^0.9.0"
 [tool.poetry.group.dev.dependencies]
 commitizen = "^3.8.0"
 deptry = "^0.16.1"
-pre-commit = "^3.6.2"
+pre-commit = "^3.7.1"
 pyright = "^1.1.326"
 pyyaml = "^6.0.1"
 ruff = "^0.4.3"
