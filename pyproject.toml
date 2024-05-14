@@ -22,7 +22,7 @@ openai = "1.28.1"
 partial_json_parser = "*"
 pydantic = "^2.7.1"
 requests = "^2.31.0"
-tiktoken = "0.6.0"
+tiktoken = "0.7.0"
 transitions = "^0.9.0"
 urllib3 = "*"
 
