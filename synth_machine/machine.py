@@ -193,8 +193,8 @@ class Synth(BaseCost):
         logging.debug(f"operation: {operation}")
         match operation:
             case OperationPriority.JINJA:
-                template = prompt_for_transition(
-                    inputs=inputs, prompt_template=output_definition.get("template")
+                template, _ = prompt_for_transition(
+                    inputs=inputs, prompt_template=output_definition.get("jinja", "")
                 )
                 self.memory[output_key] = template
                 yield [
