@@ -12,7 +12,7 @@ license = "GPL-3.0-or-later"
 
 [tool.poetry.dependencies]
 python = ">=3.11,<4.0"
-anthropic = "^0.26.0"
+anthropic = "^0.26.1"
 jinja2 = "^3.1.2"
 jq = "^1.6.0"
 jsonschema = "^4.19.2"
