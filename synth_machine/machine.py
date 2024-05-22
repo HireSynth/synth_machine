@@ -247,10 +247,18 @@ class Synth(BaseCost):
                     ]
 
                 logging.debug(f"Tool output: {predicted_json}")
-                if isinstance(self.memory.get(output_key, {}), list):
+                if loop:
                     self.memory[output_key].append(predicted_json)
+                    logging.debug(
+                        f"➕ Tool Appended {output_key}:{self.memory[output_key]}"
+                    )
+
                 else:
                     self.memory[output_key] = predicted_json
+                    logging.debug(
+                        f"💾 Tool Saved {output_key}:{self.memory[output_key]}"
+                    )
+
                 token_cost = config["tokens"]["execution"]
                 token_usage = await self.calculate_tool_token_usage(config, token_cost)
                 yield [
@@ -409,12 +417,12 @@ class Synth(BaseCost):
                     if loop:
                         self.memory[output_key].append(predicted_json)
                         logging.debug(
-                            f"➕ Appended {output_key}:{self.memory[output_key]}"
+                            f"➕ LLM Appended {output_key}:{self.memory[output_key]}"
                         )
                     else:
                         self.memory[output_key] = predicted_json
                         logging.debug(
-                            f"💾 Saved {output_key}:{self.memory[output_key]}"
+                            f"💾 LLM Saved {output_key}:{self.memory[output_key]}"
                         )
                     return
             case OperationPriority.APPEND:
