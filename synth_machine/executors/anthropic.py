@@ -27,7 +27,7 @@ class AnthropicExecutor(BaseExecutor):
         system_prompt: Optional[str],
         json_schema: Optional[dict],
         model_config: ModelConfig,
-        user: Optional[str],
+        user: str = "",
     ) -> AsyncGenerator[str, dict]:
         messages = [{"role": "user", "content": user_prompt}]
         if model_config.assistant_partial != "":

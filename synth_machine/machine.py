@@ -1,6 +1,7 @@
 import json
 import logging
 import itertools
+import uuid
 from enum import StrEnum
 from json.decoder import JSONDecodeError
 from typing import List, Optional
@@ -59,9 +60,6 @@ class Synth(BaseCost):
 
     def __init__(
         self,
-        session_id: int,
-        synth_id: int,
-        owner: int,
         initial_state: str,
         states: List[dict],
         transitions: List[dict],
@@ -70,10 +68,11 @@ class Synth(BaseCost):
         memory: dict = {},
         store: ObjectStore = ObjectStore(STORAGE_PREFIX, STORAGE_OPTIONS),
         tools: list = TOOLS,
+        user: str = str(uuid.uuid4()),
+        session_id: str = str(uuid.uuid4()),
     ) -> None:
+        self.user = user
         self.session_id = session_id
-        self.synth_id = synth_id
-        self.owner = owner
         self.raw_transitions = transitions
         self.transitions = list(
             map(
@@ -231,7 +230,7 @@ class Synth(BaseCost):
                     output_definition=output_definition,
                     inputs=inputs,
                     id=str(self.session_id),
-                    owner=str(self.owner),
+                    user=self.user,
                 )
                 predicted_json = await tool_runner(
                     store=self.store,
@@ -323,11 +322,11 @@ class Synth(BaseCost):
                         "output": 0,
                     }
                     async for token, token_info in config.executor.generate(
-                        config.user_prompt,
-                        config.system_prompt,
-                        schema,
-                        config.model_config,
-                        str(self.owner),
+                        user_prompt=config.user_prompt,
+                        system_prompt=config.system_prompt,
+                        json_schema=schema,
+                        model_config=config.model_config,
+                        user=self.user,
                     ):  # type: ignore
                         predicted = f"{predicted}{str(token)}"
                         stage = token_info["token_type"]
