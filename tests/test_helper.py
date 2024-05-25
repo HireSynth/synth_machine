@@ -28,8 +28,10 @@ class TestHelper:
         self, initial_state: str, states: list, transitions: list, memory: dict
     ) -> Synth:
         return Synth(
-            initial_state=initial_state,
-            states=states,
-            transitions=transitions,
+            config={
+                "initial_state": initial_state,
+                "states": states,
+                "transitions": transitions,
+            },
             memory=memory,
         )

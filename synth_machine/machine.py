@@ -60,12 +60,9 @@ class Synth(BaseCost):
 
     def __init__(
         self,
-        initial_state: str,
-        states: List[dict],
-        transitions: List[dict],
-        default_model_config: dict = {},
-        safety_thresholds: Optional[SafetyInput] = None,
+        config: dict,
         memory: dict = {},
+        safety_thresholds: Optional[SafetyInput] = None,
         store: ObjectStore = ObjectStore(STORAGE_PREFIX, STORAGE_OPTIONS),
         tools: list = TOOLS,
         user: str = str(uuid.uuid4()),
@@ -73,7 +70,7 @@ class Synth(BaseCost):
     ) -> None:
         self.user = user
         self.session_id = session_id
-        self.raw_transitions = transitions
+        self.raw_transitions = config["transitions"]
         self.transitions = list(
             map(
                 lambda t: {
@@ -81,17 +78,17 @@ class Synth(BaseCost):
                     "source": t["source"],
                     "dest": t["dest"],
                 },
-                transitions,
+                self.raw_transitions,
             )
         )
-        self.raw_states = states
+        self.raw_states = config["states"]
         self.state_names = list(map(lambda s: s["name"], self.raw_states))
         self.memory: dict = memory
         self._model = Model()
-        self.default_model_config = default_model_config
+        self.default_model_config = config.get("default_model_config", {})
         self._machine = Machine(
             auto_transitions=False,
-            initial=initial_state,
+            initial=config["initial_state"],
             model=self._model,
             states=self.state_names,
             transitions=self.transitions,

@@ -27,8 +27,8 @@ class AnthropicExecutor(BaseExecutor):
         system_prompt: Optional[str],
         json_schema: Optional[dict],
         model_config: ModelConfig,
-        user: str = "",
-    ) -> AsyncGenerator:
+        user: Optional[str] = None,
+    ) -> AsyncGenerator[str, dict]:
         messages = [{"role": "user", "content": user_prompt}]
         if model_config.assistant_partial != "":
             # Anthropic supports assistant prefilling instead of system prompt

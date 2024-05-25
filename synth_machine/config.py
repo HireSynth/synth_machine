@@ -56,7 +56,6 @@ async def tool_setup(
 
     logging.debug(f"Tool payload: {tool_payload}")
     return {
-        "id": id,
         "tool_id": tool.id,  # type: ignore
         "owner": user,
         "payload": tool_payload,
@@ -102,12 +101,15 @@ async def prompt_setup(
     logging.debug(f"""User PROMPT: <<<{user_prompt}>>>""")
 
     system_prompt_template = output_definition.get("system_prompt", "")
-    system_prompt, system_err = prompt_for_transition(
-        inputs=inputs,
-        prompt_template=system_prompt_template,
-    )
-    if system_err:
-        return (None, system_err)
+    if system_prompt_template:
+        system_prompt, system_err = prompt_for_transition(
+            inputs=inputs,
+            prompt_template=system_prompt_template,
+        )
+        if system_err:
+            return (None, system_err)
+    else:
+        system_prompt = None
     logging.debug(f"""System PROMPT: <<<{system_prompt}>>>""")
 
     model_config = ModelConfig(
