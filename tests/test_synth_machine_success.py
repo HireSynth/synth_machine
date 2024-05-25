@@ -5,6 +5,17 @@ from tests.test_synth_machine import SynthMachineTest
 
 
 class SynthMachineSuccessTest(SynthMachineTest):
+    async def test_trigger(self):
+        simple_transitions = self.helper.get_transistions("simple_transistions")
+        synth = self.helper.create_synth_machine(
+            initial_state=self.states[0]["name"],
+            states=self.states,
+            transitions=simple_transitions,
+            memory=self.FAKE_MEMORY,
+        )
+        self.assertEqual(await synth.trigger(simple_transitions[0]["trigger"]), {})
+        self.assertEqual(synth.current_state(), self.states[1]["name"])
+
     async def test_if_simple_synth_moves_between_states(self):
         simple_transitions = self.helper.get_transistions("simple_transistions")
         synth = self.helper.create_synth_machine(

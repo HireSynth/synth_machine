@@ -5,6 +5,20 @@ from tests.test_synth_machine import SynthMachineTest
 
 
 class SynthMachineFailureTests(SynthMachineTest):
+    async def test_trigger(self):
+        simple_transitions = self.helper.get_transistions("simple_transistions")
+        synth = self.helper.create_synth_machine(
+            initial_state=self.states[0]["name"],
+            states=self.states,
+            transitions=simple_transitions,
+            memory=self.FAKE_MEMORY,
+        )
+        with self.assertRaises(Exception) as context:
+            self.assertEqual(
+                str(context), "No transition: failedTransition exists at state: theme"
+            )
+        self.assertEqual(synth.current_state(), self.states[0]["name"])
+
     async def test_safety_flagged_failure(self):
         basic_transitions = self.helper.get_transistions("basic_transitions")
         synth = self.helper.create_synth_machine(

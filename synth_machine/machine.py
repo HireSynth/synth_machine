@@ -587,3 +587,26 @@ class Synth(BaseCost):
 
         async for event in self.execute_for_trigger(initial_trigger=trigger):  # type: ignore
             yield event
+
+    async def trigger(self, trigger: str, inputs: dict = {}):
+        if (
+            len(
+                filtered_transition := list(
+                    filter(
+                        lambda person: person["trigger"] == trigger,
+                        self.interfaces_for_available_triggers(),
+                    )
+                )
+            )
+            == 1
+        ):
+            transition_outputs = [
+                val["key"] for val in filtered_transition[0].get("outputs", [])
+            ]
+        else:
+            raise Exception(
+                f"No transition: {trigger} exists at state: {self.current_state()}"
+            )
+        async for value in self.streaming_trigger(trigger, params=inputs):
+            logging.debug(value)
+        return {output: self.memory[output] for output in transition_outputs}
