@@ -23,7 +23,7 @@ class SynthConfig:
 
 
 async def tool_setup(
-    output_definition: dict, inputs: dict, id: str, owner: str, tools: list
+    output_definition: dict, inputs: dict, id: str, user: str, tools: list
 ) -> dict:
     tool_search = [tool for tool in tools if tool.name == output_definition.get("tool")]
     if not tool_search:
@@ -58,7 +58,7 @@ async def tool_setup(
     return {
         "id": id,
         "tool_id": tool.id,  # type: ignore
-        "owner": owner,
+        "owner": user,
         "payload": tool_payload,
         "output_mime_types": output_mime_types,
         "tool_path": tool_path,

@@ -28,9 +28,6 @@ class TestHelper:
         self, initial_state: str, states: list, transitions: list, memory: dict
     ) -> Synth:
         return Synth(
-            session_id=1,
-            synth_id=1,
-            owner=1,
             initial_state=initial_state,
             states=states,
             transitions=transitions,
