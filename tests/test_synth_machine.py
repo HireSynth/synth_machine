@@ -33,7 +33,7 @@ class SynthMachineTest(IsolatedAsyncioTestCase):
         return (
             SynthConfig(
                 **{
-                    "executor": MockExecutor,
+                    "executor": MockExecutor(),
                     "model_config": ModelConfig(
                         executor="mock",
                     ),
@@ -48,7 +48,7 @@ class SynthMachineTest(IsolatedAsyncioTestCase):
         return (
             SynthConfig(
                 **{
-                    "executor": MockExecutor,
+                    "executor": MockExecutor(),
                     "model_config": ModelConfig(
                         executor="mock",
                     ),
@@ -63,7 +63,7 @@ class SynthMachineTest(IsolatedAsyncioTestCase):
         return (
             SynthConfig(
                 **{
-                    "executor": MockJsonExecutor,
+                    "executor": MockJsonExecutor(),
                     "model_config": ModelConfig(
                         executor="mock",
                     ),
@@ -78,7 +78,7 @@ class SynthMachineTest(IsolatedAsyncioTestCase):
         return (
             SynthConfig(
                 **{
-                    "executor": MockJsonParseFailureExecutor,
+                    "executor": MockJsonParseFailureExecutor(),
                     "model_config": ModelConfig(
                         executor="mock",
                     ),

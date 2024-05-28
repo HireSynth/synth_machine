@@ -327,11 +327,12 @@ class Synth(BaseCost):
                         json_schema=schema,
                         model_config=config.model_config,
                         user=self.user,
-                    ):  # type: ignore
+                    ):
                         predicted = f"{predicted}{str(token)}"
-                        stage = token_info["token_type"]
+                        stage = token_info.get("token_type", "output")
+                        tokens_used = token_info.get("tokens")
                         token_cost_per_chunk = self.calculate_chunk_cost(
-                            config, token_info["tokens"]
+                            config, tokens_used
                         )
                         tokens[stage] += token_cost_per_chunk
                         yield [
@@ -339,14 +340,14 @@ class Synth(BaseCost):
                             output_key,
                             token,
                             token_cost_per_chunk,
-                            token_info["tokens"],
+                            tokens_used,
                             stage,
                             llm_name,
                         ]
                     await self.calculate_prompt_token_usage(
                         llm_name,
-                        input_tokens=tokens["input"],
-                        output_tokens=tokens["output"],
+                        input_tokens=tokens.get("input", 0),
+                        output_tokens=tokens.get("output", 0),
                     )  # type: ignore
                     logging.debug("🤖 Execution complete")
 

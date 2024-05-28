@@ -20,12 +20,12 @@ class BaseExecutor:
     def post_process(output: dict) -> dict:
         raise NotImplementedError
 
-    async def generate(
+    def generate(
         self,
         user_prompt: Optional[str],
         system_prompt: Optional[str],
         json_schema: Optional[dict],
         model_config: ModelConfig,
         user: str = "",
-    ) -> AsyncGenerator[str, dict]:
+    ) -> AsyncGenerator:
         raise NotImplementedError

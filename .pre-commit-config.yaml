@@ -33,19 +33,19 @@ repos:
       stages: [pre-commit]
 
 - repo: https://github.com/commitizen-tools/commitizen
-  rev: v3.26.0
+  rev: v3.27.0
   hooks:
     - id: commitizen
       stages: [commit-msg]
 
 - repo: https://github.com/RobertCraigie/pyright-python
-  rev: v1.1.363
+  rev: v1.1.364
   hooks:
     - id: pyright
       stages: [pre-commit]
 
 - repo: https://github.com/astral-sh/ruff-pre-commit
-  rev: v0.4.4
+  rev: v0.4.5
   hooks:
     - id: ruff
       args: [--fix]
