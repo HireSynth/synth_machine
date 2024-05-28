@@ -21,14 +21,14 @@ class AnthropicExecutor(BaseExecutor):
     def post_process(output: dict) -> dict:
         return output
 
-    async def generate(  # type: ignore
+    async def generate(
         self,
         user_prompt: Optional[str],
         system_prompt: Optional[str],
         json_schema: Optional[dict],
         model_config: ModelConfig,
         user: str = "",
-    ) -> AsyncGenerator[str, dict]:
+    ) -> AsyncGenerator:
         messages = [{"role": "user", "content": user_prompt}]
         if model_config.assistant_partial != "":
             # Anthropic supports assistant prefilling instead of system prompt

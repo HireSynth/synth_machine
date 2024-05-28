@@ -24,14 +24,14 @@ class OpenAIExecutor(BaseExecutor):
     def post_process(output: dict) -> dict:
         return output.get("output", {})
 
-    async def generate(  # type: ignore
+    async def generate(
         self,
         user_prompt: Optional[str],
         system_prompt: Optional[str],
         json_schema: Optional[dict],
         model_config: ModelConfig,
         user: str = "",
-    ) -> AsyncGenerator[str, dict]:
+    ) -> AsyncGenerator:
         # PyRight doesn't understand the openai library has been updated
         messages = (
             [
