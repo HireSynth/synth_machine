@@ -20,7 +20,7 @@ from synth_machine.config import (
 )
 from synth_machine.runners import jq_runner, tool_runner
 from synth_machine.cost import BaseCost
-
+from pydantic import BaseModel
 from synth_machine import STORAGE_OPTIONS, STORAGE_PREFIX, TOOLS
 
 
@@ -55,6 +55,15 @@ class OperationPriority(StrEnum):
     TOOL = "tool"
 
 
+class Tool(BaseModel):
+    name: str
+    api_endpoint: str
+    api_spec: dict
+    id: str = "-1"
+    tokens_per_execution: float = 0
+    token_multiplier: float = 0
+
+
 class Synth(BaseCost):
     JSONSCHEMA_PRELUDE = {"$schema": "http://json-schema.org/draft-04/schema#"}
 
@@ -64,9 +73,9 @@ class Synth(BaseCost):
         memory: dict = {},
         safety_thresholds: Optional[SafetyInput] = None,
         store: ObjectStore = ObjectStore(STORAGE_PREFIX, STORAGE_OPTIONS),
-        tools: list = TOOLS,
         user: str = str(uuid.uuid4()),
         session_id: str = str(uuid.uuid4()),
+        tools: List[Tool] = TOOLS,
     ) -> None:
         self.user = user
         self.session_id = session_id
@@ -83,7 +92,7 @@ class Synth(BaseCost):
         )
         self.raw_states = config["states"]
         self.state_names = list(map(lambda s: s["name"], self.raw_states))
-        self.memory: dict = memory
+        self.memory: dict = config.get("initial_memory", {}) | memory
         self._model = Model()
         self.default_model_config = config.get("default_model_config", {})
         self._machine = Machine(
@@ -229,6 +238,7 @@ class Synth(BaseCost):
                     id=str(self.session_id),
                     user=self.user,
                 )
+                logging.info(f"Tool config: {config}")
                 predicted_json = await tool_runner(
                     store=self.store,
                     config=config,
@@ -607,6 +617,18 @@ class Synth(BaseCost):
             raise Exception(
                 f"No transition: {trigger} exists at state: {self.current_state()}"
             )
+        missing_inputs = []
+        for input in filtered_transition[0].get("inputs", []):
+            if input["key"] not in (self.memory | inputs).keys():
+                missing_inputs.append(input["key"])
+        if len(missing_inputs) > 0:
+            raise Exception(
+                f"Inputs missing for transition: {trigger}, missing: {', '.join(missing_inputs)}"
+            )
+
         async for value in self.streaming_trigger(trigger, params=inputs):
             logging.debug(value)
+            if value[0] == FailureState.FAILED:
+                logging.error(f"Failure: {value}")
+
         return {output: self.memory[output] for output in transition_outputs}

@@ -30,8 +30,8 @@ class OpenAIExecutor(BaseExecutor):
         system_prompt: Optional[str],
         json_schema: Optional[dict],
         model_config: ModelConfig,
-        user: Optional[str] = None,
-    ) -> AsyncGenerator[str, dict]:
+        user: str = "",
+    ) -> AsyncGenerator:
         # PyRight doesn't understand the openai library has been updated
         messages = (
             [

@@ -27,6 +27,9 @@ async def tool_setup(
 ) -> dict:
     tool_search = [tool for tool in tools if tool.name == output_definition.get("tool")]
     if not tool_search:
+        logging.warning(
+            f"Tool not found: '{output_definition.get('tool')}'. Available tools: {[tool.name for tool in tools]}"
+        )
         return {}
     tool = tool_search[0]
     tool_path = f"{tool.api_endpoint}{output_definition['route']}"

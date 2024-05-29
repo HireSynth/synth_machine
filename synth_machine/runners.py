@@ -18,9 +18,15 @@ async def tool_runner(
             config["tool_path"],
             json=config["payload"],
         )
+        response_meta = {
+            "tool_meta": {
+                "status": response.status_code,
+                "success": str(response.status_code).startswith("2"),
+            }
+        }
     except Exception as e:
-        logging.warn(f"Error in running tool {e}")
-        return None
+        logging.error(f"Error in running tool {e}")
+        return
 
     if config["output_mime_types"]:
         output_format = response.headers["content-type"].split("/")[1]
@@ -30,9 +36,10 @@ async def tool_runner(
             "file_name": file_name,
             "mime_type": output_format,
             "url": f"{STORAGE_PREFIX}/{file_name}",
+            "tool_meta": response_meta["tool_meta"],
         }
     else:
-        output = response.json()
+        output = response.json() | response_meta
         return output if not return_key else output[return_key]
 
 
