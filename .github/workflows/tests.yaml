@@ -4,6 +4,7 @@ permissions:
   contents: read
   issues: write
   pull-requests: write
+  issues: write
 on:
   pull_request:
 jobs:
