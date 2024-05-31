@@ -2,6 +2,7 @@ name: tests
 permissions:
   actions: read
   contents: read
+  issues: write
   pull-requests: write
 on:
   pull_request:
@@ -25,6 +26,7 @@ jobs:
         poetry run coverage report --format=markdown > report.txt
     - name: Report Coverage
       uses: actions/github-script@v7
+      github-token: ${{secrets.GITHUB_TOKEN}}
       with:
         script: |
           const fs = require('fs');
