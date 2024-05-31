@@ -5,6 +5,17 @@ from tests.test_synth_machine import SynthMachineTest
 
 
 class SynthMachineSuccessTest(SynthMachineTest):
+    async def test_trigger(self):
+        simple_transitions = self.helper.get_transistions("simple_transistions")
+        synth = self.helper.create_synth_machine(
+            initial_state=self.states[0]["name"],
+            states=self.states,
+            transitions=simple_transitions,
+            memory=self.FAKE_MEMORY,
+        )
+        self.assertEqual(await synth.trigger(simple_transitions[0]["trigger"]), {})
+        self.assertEqual(synth.current_state(), self.states[1]["name"])
+
     async def test_if_simple_synth_moves_between_states(self):
         simple_transitions = self.helper.get_transistions("simple_transistions")
         synth = self.helper.create_synth_machine(
@@ -42,12 +53,12 @@ class SynthMachineSuccessTest(SynthMachineTest):
             ],
         )
 
-    async def test_amend(self):
-        amend_transistions = self.helper.get_transistions("amend_transistions")
+    async def test_append(self):
+        append_transistions = self.helper.get_transistions("append_transistions")
         synth = self.helper.create_synth_machine(
             initial_state=self.states[0]["name"],
             states=self.states,
-            transitions=amend_transistions,
+            transitions=append_transistions,
             memory=self.FAKE_MEMORY,
         )
         expected = [
@@ -58,7 +69,7 @@ class SynthMachineSuccessTest(SynthMachineTest):
                 *(self.FAKE_MEMORY["a"], self.FAKE_MEMORY["b"]) * 2,
             ],
         ]
-        for count, transition in enumerate(amend_transistions):
+        for count, transition in enumerate(append_transistions):
             async for _ in synth.streaming_trigger(
                 transition.get("trigger")  # type: ignore
             ):
@@ -109,10 +120,11 @@ class SynthMachineSuccessTest(SynthMachineTest):
             transitions=jq_transitions,
             memory=self.FAKE_MEMORY,
         )
-        async for _ in synth.streaming_trigger(
+        async for _yield in synth.streaming_trigger(
             jq_transitions[0].get("trigger"),  # type: ignore
         ):
             pass
+            # print(_yield)
         self.assertEqual(len(synth.memory["flattened"]), 30)
 
 
