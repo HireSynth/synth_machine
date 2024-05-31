@@ -1,11 +1,13 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Optional
 import tiktoken
 
 
 class ModelConfig(BaseModel):
     executor: str = "togetherai"
-    model_name: str = "mistralai/Mixtral-8x7B-Instruct-v0.1"
+    llm_name: str = Field(
+        alias="model_name", default="mistralai/Mixtral-8x7B-Instruct-v0.1"
+    )
     max_tokens: int = 1024
     temperature: float = 0.8
     assistant_partial: str = ""

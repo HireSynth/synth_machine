@@ -18,13 +18,22 @@ from synth_machine.config import (
     prompt_for_transition,
     tool_setup,
 )
-from synth_machine.runners import jq_runner, tool_runner
+from synth_machine.runners import (
+    jq_runner,
+    tool_runner,
+    STORAGE_PREFIX,
+    STORAGE_OPTIONS,
+)
 from synth_machine.cost import BaseCost
-from pydantic import BaseModel
-from synth_machine import STORAGE_OPTIONS, STORAGE_PREFIX, TOOLS
+from synth_machine.tools import Tool
+from synth_machine.synth_definition import SynthDefinition, Output, Input, Transition
 
 
 class Model:
+    pass
+
+
+class TransitionError(Exception):
     pass
 
 
@@ -55,15 +64,6 @@ class OperationPriority(StrEnum):
     TOOL = "tool"
 
 
-class Tool(BaseModel):
-    name: str
-    api_endpoint: str
-    api_spec: dict
-    id: str = "-1"
-    tokens_per_execution: float = 0
-    token_multiplier: float = 0
-
-
 class Synth(BaseCost):
     JSONSCHEMA_PRELUDE = {"$schema": "http://json-schema.org/draft-04/schema#"}
 
@@ -75,29 +75,30 @@ class Synth(BaseCost):
         store: ObjectStore = ObjectStore(STORAGE_PREFIX, STORAGE_OPTIONS),
         user: str = str(uuid.uuid4()),
         session_id: str = str(uuid.uuid4()),
-        tools: List[Tool] = TOOLS,
+        tools: List[Tool] = [],
     ) -> None:
+        config = SynthDefinition(**config)
         self.user = user
         self.session_id = session_id
-        self.raw_transitions = config["transitions"]
+        self.raw_transitions = config.transitions
         self.transitions = list(
             map(
                 lambda t: {
-                    "trigger": t["trigger"],
-                    "source": t["source"],
-                    "dest": t["dest"],
+                    "trigger": t.trigger,
+                    "source": t.source,
+                    "dest": t.dest,
                 },
                 self.raw_transitions,
             )
         )
-        self.raw_states = config["states"]
-        self.state_names = list(map(lambda s: s["name"], self.raw_states))
-        self.memory: dict = config.get("initial_memory", {}) | memory
+        self.raw_states = config.states
+        self.state_names = list(map(lambda s: s.name, self.raw_states))
+        self.memory: dict = config.initial_memory | memory
         self._model = Model()
-        self.default_model_config = config.get("default_model_config", {})
+        self.default_model_config = config.default_model_config
         self._machine = Machine(
             auto_transitions=False,
-            initial=config["initial_state"],
+            initial=config.initial_state,
             model=self._model,
             states=self.state_names,
             transitions=self.transitions,
@@ -114,34 +115,34 @@ class Synth(BaseCost):
 
     def interfaces_for_available_triggers(
         self, state: Optional[str] = None
-    ) -> List[dict]:
+    ) -> List[Transition]:
         return [
             transition
             for transition in self.raw_transitions
-            if transition["trigger"]
+            if transition.trigger
             in self._machine.get_triggers(state or self.current_state())
         ]
 
     def get_raw_state(self, state: str):
-        return [s for s in self.raw_states if s["name"] == state][0]
+        return [s for s in self.raw_states if s.name == state][0]
 
     def machine_update(self, transition, set_active_trigger=False, state=None):
         return [
             "MACHINE_UPDATE",
-            self.interfaces_for_available_triggers(state=state or transition["dest"]),
+            self.interfaces_for_available_triggers(state=state or transition.dest),
             self.memory,
             self.current_state(),
-            transition["trigger"] if set_active_trigger else "",
+            transition.trigger if set_active_trigger else "",
         ]
 
-    async def post_process(self, output_key: str, output_definition: dict, chunk: str):
+    async def post_process(
+        self, output_key: str, output_definition: Output, chunk: str
+    ):
         new_buffer = f"{self.buffer.get(output_key, "")}{chunk}"
         if new_buffer != self.buffer.get(output_key, ""):
             self.buffer[output_key] = new_buffer
             try:
-                result = self.memory | loads(str(self.buffer[output_key]), OBJ).get(  # type: ignore
-                    "output", {}
-                )
+                result = self.memory | loads(str(self.buffer[output_key]), OBJ).output
             except Exception:
                 result = self.memory
         else:
@@ -149,15 +150,15 @@ class Synth(BaseCost):
         operation_list = [
             operation
             for operation in PostProcessTasks
-            if output_definition.get(operation)
+            if getattr(output_definition, operation, None)
         ]
         operation = operation_list[0] if operation_list else None
         match operation:
             case PostProcessTasks.JQ:
                 jq_result = jq_runner(
-                    output_definition.get(operation, ""),
+                    getattr(output_definition, operation),
                     result,
-                    output_definition.get("schema", {}),
+                    output_definition.schema_dict,
                 )
                 if jq_result:
                     self.memory[output_key] = jq_result
@@ -168,15 +169,15 @@ class Synth(BaseCost):
 
     async def run_task(
         self,
-        inputs: dict,
-        transition: dict,
+        inputs: Input,
+        transition: Transition,
         output_key: str,
-        output_definition: dict,
+        output_definition: Output,
         retries: int = 3,
         loop: bool = False,
     ):
         yield [YieldTasks.SET_ACTIVE_OUTPUT, output_key]
-        schema: dict = output_definition.get("schema", {})
+        schema = output_definition.schema_dict
 
         # TODO: find a nicer way to ensure tests don't reference the finished memory object out of order
         yield [
@@ -192,14 +193,14 @@ class Synth(BaseCost):
         operation_list = [
             operation
             for operation in OperationPriority
-            if output_definition.get(operation)
+            if getattr(output_definition, operation, None)
         ]
         operation = operation_list[0] if operation_list else None
         logging.debug(f"operation: {operation}")
         match operation:
             case OperationPriority.JINJA:
                 template, _ = prompt_for_transition(
-                    inputs=inputs, prompt_template=output_definition.get("jinja", "")
+                    inputs=inputs, prompt_template=output_definition.jinja
                 )
                 self.memory[output_key] = template
                 yield [
@@ -210,7 +211,9 @@ class Synth(BaseCost):
             case OperationPriority.INTERLEAVE:
                 keys = [
                     self.memory.get(x)
-                    for x in output_definition.get(OperationPriority.INTERLEAVE, "")
+                    for x in getattr(
+                        output_definition, OperationPriority.INTERLEAVE, ""
+                    )
                     if self.memory.get(x)
                 ]
                 output = []
@@ -239,11 +242,7 @@ class Synth(BaseCost):
                     user=self.user,
                 )
                 logging.info(f"Tool config: {config}")
-                predicted_json = await tool_runner(
-                    store=self.store,
-                    config=config,
-                    return_key=output_definition.get("return_key"),
-                )
+                predicted_json = await tool_runner(store=self.store, config=config)
 
                 if not predicted_json:
                     yield [
@@ -282,8 +281,8 @@ class Synth(BaseCost):
                 config, err = await prompt_setup(
                     output_definition=output_definition,
                     inputs=inputs,
-                    default_model_config=self.default_model_config
-                    | transition.get("model_config", {}),
+                    default_model_config=self.default_model_config.dict(by_alias=True)  # type: ignore
+                    | transition.model_config,
                 )
                 if err or not config:
                     logging.error(err)
@@ -323,7 +322,7 @@ class Synth(BaseCost):
                     logging.debug(
                         f"🤖 Execution started ({config.model_config.executor})"
                     )
-                    llm_name = config.model_config.model_name
+                    llm_name = config.model_config.llm_name
                     tokens = {
                         "input": 0,
                         "output": 0,
@@ -387,7 +386,7 @@ class Synth(BaseCost):
                         json.dumps(response_safety),
                     ]
 
-                    if schema.get("type") == "string":
+                    if schema and schema.get("type") == "string":
                         predicted_json = predicted
                     else:
                         try:
@@ -396,7 +395,7 @@ class Synth(BaseCost):
                             )  # type: ignore
                             validate(
                                 instance=predicted_json,
-                                schema=self.JSONSCHEMA_PRELUDE | schema,
+                                schema=self.JSONSCHEMA_PRELUDE | schema,  # type: ignore
                             )
 
                         except (
@@ -414,7 +413,7 @@ class Synth(BaseCost):
                                 FailureState.OUTPUT_VALIDATION_FAILED,
                                 output_key,
                             ]
-                            self._model.state = transition["source"]  # type: ignore
+                            self._model.state = transition.source  # type: ignore
                             return
                     logging.debug("✅ Validated")
                     yield [
@@ -433,7 +432,7 @@ class Synth(BaseCost):
                         )
                     return
             case OperationPriority.APPEND:
-                memory_keys = output_definition.get(operation, [])
+                memory_keys = getattr(output_definition, operation, [])
 
                 if self.memory.get(output_key) is None:
                     self.memory[output_key] = []
@@ -496,21 +495,21 @@ class Synth(BaseCost):
             yield self.machine_update(transition=transition, set_active_trigger=True)
 
             post_process_tasks = [
-                (output_definition.get("key"), output_definition)
-                for output_definition in transition.get("outputs", [])
+                (output_definition.key, output_definition)
+                for output_definition in transition.outputs
                 for post_processing_task in PostProcessTasks
-                if output_definition.get(post_processing_task)
+                if getattr(output_definition, post_processing_task, None)
             ]
-            for output_definition in transition.get("outputs", []):
-                output_key = output_definition.get("key")
+            for output_definition in transition.outputs:
+                output_key = output_definition.key
                 inputs = {
-                    input_item.get("key"): self.memory.get(input_item.get("key"))
-                    for input_item in transition.get("inputs", [])
+                    input_item.key: self.memory.get(input_item.key)
+                    for input_item in transition.inputs
                 }
-                loop = output_definition.get("loop")
+                loop = output_definition.loop
                 if loop is not None:
                     self.memory[output_key] = []
-                    for matrix in loop.get("matrix", []):
+                    for matrix in loop.matrix:
                         for loop_var, memory_key_looped in matrix.items():
                             if isinstance(memory_key_looped, list):
                                 loop = memory_key_looped
@@ -566,10 +565,10 @@ class Synth(BaseCost):
                         async for post_process_event in post_process:
                             yield post_process_event
 
-            self._model.trigger(transition["trigger"])  # type: ignore
-            yield ["TRANSITION_COMPLETED", transition["trigger"]]
+            self._model.trigger(transition.trigger)  # type: ignore
+            yield ["TRANSITION_COMPLETED", transition.trigger]
 
-            if after := transition.get("after"):
+            if after := transition.after:
                 if "memory_key:" in after:
                     memory_key = after.split(":")[1]
                     if self.memory.get(memory_key):
@@ -588,7 +587,7 @@ class Synth(BaseCost):
         return [
             transition
             for transition in self.raw_transitions
-            if transition["trigger"] == trigger
+            if transition.trigger == trigger
         ][0]
 
     async def streaming_trigger(self, trigger: str, params: Optional[dict] = None):
@@ -599,32 +598,18 @@ class Synth(BaseCost):
             yield event
 
     async def trigger(self, trigger: str, inputs: dict = {}):
-        if (
-            len(
-                filtered_transition := list(
-                    filter(
-                        lambda person: person["trigger"] == trigger,
-                        self.interfaces_for_available_triggers(),
-                    )
-                )
+        filtered_transition = list(
+            filter(
+                lambda transition: transition.trigger == trigger,
+                self.interfaces_for_available_triggers(),
             )
-            == 1
-        ):
-            transition_outputs = [
-                val["key"] for val in filtered_transition[0].get("outputs", [])
-            ]
-        else:
-            raise Exception(
+        )
+        if not len(filtered_transition):
+            raise TransitionError(
                 f"No transition: {trigger} exists at state: {self.current_state()}"
             )
-        missing_inputs = []
-        for input in filtered_transition[0].get("inputs", []):
-            if input["key"] not in (self.memory | inputs).keys():
-                missing_inputs.append(input["key"])
-        if len(missing_inputs) > 0:
-            raise Exception(
-                f"Inputs missing for transition: {trigger}, missing: {', '.join(missing_inputs)}"
-            )
+
+        transition_outputs = [val.key for val in filtered_transition[0].outputs]  # type: ignore
 
         async for value in self.streaming_trigger(trigger, params=inputs):
             logging.debug(value)

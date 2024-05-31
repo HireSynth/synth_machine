@@ -10,7 +10,7 @@ import asyncio
 
 
 @singleton
-class MockExecutor(BaseExecutor):
+class LoremExecutor(BaseExecutor):
     def __init__(self) -> None:
         self.word_catalog = [
             "lorem",

@@ -72,7 +72,7 @@ class AnthropicExecutor(BaseExecutor):
                 tools = model_config.tool_options
 
             tool_response = await self.client.beta.tools.messages.create(
-                model=model_config.model_name,
+                model=model_config.llm_name,
                 system=system_prompt,
                 max_tokens=model_config.max_tokens,
                 messages=messages,
@@ -99,7 +99,7 @@ class AnthropicExecutor(BaseExecutor):
             )  # type: ignore
         else:
             response = await self.client.messages.create(
-                model=model_config.model_name,
+                model=model_config.llm_name,
                 system=system_prompt,
                 messages=messages,  # type: ignore
                 max_tokens=model_config.max_tokens,

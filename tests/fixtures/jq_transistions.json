@@ -3,7 +3,7 @@
       "trigger": "1",
       "source": "theme",
       "dest": "select",
-      "inputs": [{"key": "data"}],
+      "inputs": [{"key": "data"}, {"key": "acts_condensed"}],
       "outputs": [
           {"key": "flattened", "jq": ".acts_condensed[][]"}
       ]

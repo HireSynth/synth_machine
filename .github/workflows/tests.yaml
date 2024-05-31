@@ -4,7 +4,6 @@ permissions:
   contents: read
   issues: write
   pull-requests: write
-  issues: write
 on:
   pull_request:
 jobs:
@@ -28,7 +27,7 @@ jobs:
     - name: Report Coverage
       uses: actions/github-script@v7
       env:
-        github-token: ${{secrets.GITHUB_TOKEN}}
+        GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
       with:
         script: |
           const fs = require('fs');

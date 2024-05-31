@@ -65,7 +65,7 @@ class OpenAIExecutor(BaseExecutor):
             )
 
             response = await self.client.chat.completions.create(
-                model=model_config.model_name,
+                model=model_config.llm_name,
                 messages=messages,  # type: ignore
                 temperature=model_config.temperature,
                 stream=True,
@@ -76,7 +76,7 @@ class OpenAIExecutor(BaseExecutor):
             )
         else:
             response = await self.client.chat.completions.create(
-                model=model_config.model_name,
+                model=model_config.llm_name,
                 messages=messages,  # type: ignore
                 temperature=model_config.temperature,
                 stream=True,

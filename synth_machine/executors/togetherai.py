@@ -48,7 +48,7 @@ class TogetherAIExecutor(BaseExecutor):
         if (
             json_schema
             and json_schema.get("type") != "string"
-            and model_config.model_name
+            and model_config.llm_name
             in [
                 "mistralai/Mixtral-8x7B-Instruct-v0.1",
                 "mistralai/Mistral-7B-Instruct-v0.1",
@@ -75,7 +75,7 @@ class TogetherAIExecutor(BaseExecutor):
             )
 
             response = await self.client.chat.completions.create(
-                model=model_config.model_name,
+                model=model_config.llm_name,
                 messages=messages,  # type: ignore
                 temperature=model_config.temperature,
                 stream=True,
@@ -86,7 +86,7 @@ class TogetherAIExecutor(BaseExecutor):
             )
         else:
             response = await self.client.chat.completions.create(
-                model=model_config.model_name,
+                model=model_config.llm_name,
                 messages=messages,  # type: ignore
                 temperature=model_config.temperature,
                 stream=True,
