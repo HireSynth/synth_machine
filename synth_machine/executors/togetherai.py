@@ -23,7 +23,7 @@ class TogetherAIExecutor(BaseExecutor):
 
     @staticmethod
     def post_process(output: dict) -> dict:
-        return output[0]["arguments"].get("output", {})
+        return output["content"].get("output", {})
 
     async def generate(
         self,
@@ -45,6 +45,7 @@ class TogetherAIExecutor(BaseExecutor):
             {"role": "user", "content": str(user_prompt)},
         )
 
+        tool_use = False
         if (
             json_schema
             and json_schema.get("type") != "string"
@@ -55,6 +56,7 @@ class TogetherAIExecutor(BaseExecutor):
                 "togethercomputer/CodeLlama-34b-Instruct",
             ]
         ):
+            tool_use = True
             tools = [
                 ChatCompletionToolParam(
                     {
@@ -95,12 +97,19 @@ class TogetherAIExecutor(BaseExecutor):
             )
 
         input_tokens = calculate_input_tokens(system_prompt, user_prompt)
-        yield ("", {"tokens": input_tokens, "token_type": "input"})  # type: ignore
+        yield (
+            "" if not tool_use else '{"content": {',
+            {"tokens": input_tokens, "token_type": "input"},
+        )  # type: ignore
 
         logging.debug("TogetherAI Response:")
         async for chunk in response:
-            if not chunk.choices[0].finish_reason:
-                token = chunk.choices[0].delta.content
+            choice = chunk.choices[0]
+            if not choice.finish_reason:
+                if tool_use:
+                    token = choice.text
+                else:
+                    token = choice.delta.content
                 if DEBUG:
                     print(token, end="", flush=True)
                 else:
