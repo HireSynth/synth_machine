@@ -5,7 +5,6 @@ from openai.types.chat import (
     ChatCompletionNamedToolChoiceParam,
     ChatCompletionToolParam,
 )
-
 from synth_machine.executors.base import BaseExecutor, singleton
 from synth_machine.machine_config import (
     ModelConfig,

@@ -1,12 +1,10 @@
 import logging
 from typing import AsyncGenerator, Optional
-
 from openai import AsyncOpenAI
 from openai.types.chat import (
     ChatCompletionNamedToolChoiceParam,
     ChatCompletionToolParam,
 )
-
 from synth_machine.executors.base import BaseExecutor, singleton
 from synth_machine.machine_config import (
     ModelConfig,
