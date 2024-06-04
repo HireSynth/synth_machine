@@ -6,15 +6,13 @@ from synth_machine.machine_config import (
     ModelConfig,
     calculate_input_tokens,
 )
-import anthropic
-import tiktoken
 from synth_machine.executors import ANTHROPIC_API_KEY, DEBUG
+import anthropic
 
 
 @singleton
 class AnthropicExecutor(BaseExecutor):
     def __init__(self) -> None:
-        self.enc = tiktoken.get_encoding("cl100k_base")
         self.client = anthropic.AsyncAnthropic(api_key=ANTHROPIC_API_KEY)  # type: ignore
 
     @staticmethod

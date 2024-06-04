@@ -12,7 +12,6 @@ from object_store import ObjectStore
 from partial_json_parser import loads, OBJ
 from transitions import Machine
 
-from synth_machine.safety import Safety, SafetyInput, SAFETY_DEFAULTS
 from synth_machine.config import (
     prompt_setup,
     prompt_for_transition,
@@ -48,7 +47,6 @@ class FailureState(StrEnum):
     FAILED = "FAILED"
     LOOP_FAILURE = "LOOP_FAILED"
     OUTPUT_VALIDATION_FAILED = "OUTPUT_VALIDATION_FAILED"
-    SAFETY_FAILURE = "SAFETY_FAILURE"
 
 
 class PostProcessTasks(StrEnum):
@@ -71,7 +69,6 @@ class Synth(BaseCost):
         self,
         config: dict,
         memory: dict = {},
-        safety_thresholds: Optional[SafetyInput] = None,
         store: ObjectStore = ObjectStore(STORAGE_PREFIX, STORAGE_OPTIONS),
         user: str = str(uuid.uuid4()),
         session_id: str = str(uuid.uuid4()),
@@ -102,9 +99,6 @@ class Synth(BaseCost):
             model=self._model,
             states=self.state_names,
             transitions=self.transitions,
-        )
-        self.safety = Safety(
-            thresholds=(safety_thresholds if safety_thresholds else SAFETY_DEFAULTS),
         )
         self.buffer = {}
         self.store = store
@@ -289,33 +283,6 @@ class Synth(BaseCost):
                     yield [FailureState.FAILED, output_key, err]
                     return
 
-                prompt_safety = self.safety.check(
-                    text=f"{config.system_prompt}\n{config.user_prompt}",
-                    provider=config.model_config.executor,
-                )
-                if prompt_safety is None:
-                    yield [
-                        FailureState.FAILED,
-                        "PROMPT",
-                    ]
-                    logging.error("❌ Safety failure")
-                    return
-                if self.safety.flagged(prompt_safety):
-                    yield [
-                        FailureState.SAFETY_FAILURE,
-                        "PROMPT",
-                        json.dumps(prompt_safety),
-                    ]
-                    logging.error(f"❌ Prompt is unsafe: {prompt_safety}")
-                    return
-
-                logging.debug("✅ Prompt is safe")
-                yield [
-                    "SAFETY",
-                    "SUCCESS",
-                    "PROMPT",
-                    json.dumps(prompt_safety),
-                ]
                 while True:
                     executor = {"executor": config.model_config.executor}
                     yield [YieldTasks.MODEL_CONFIG, output_key, executor]
@@ -357,34 +324,7 @@ class Synth(BaseCost):
                     )  # type: ignore
                     logging.debug("🤖 Execution complete")
 
-                    response_safety = self.safety.check(
-                        text=predicted, provider=config.model_config.executor
-                    )
-                    if response_safety is None:
-                        yield [
-                            FailureState.FAILED,
-                            "RESPONSE",
-                        ]
-                        logging.error("❌ Safety failure")
-                        return
-                    if self.safety.flagged(response_safety):
-                        yield [
-                            FailureState.SAFETY_FAILURE,
-                            "RESPONSE",
-                            json.dumps(response_safety),
-                        ]
-
-                        logging.error(f"❌ Response is unsafe: {response_safety}")
-                        return
-
-                    logging.debug("✅ Response is safe")
                     logging.debug(f"{predicted.strip()}")
-                    yield [
-                        "SAFETY",
-                        "SUCCESS",
-                        "RESPONSE",
-                        json.dumps(response_safety),
-                    ]
 
                     if schema and schema.get("type") == "string":
                         predicted_json = predicted
