@@ -14,7 +14,9 @@ STORAGE_OPTIONS = json.loads(os.environ.get("STORAGE_OPTIONS", "{}"))
 STORAGE_PREFIX = os.environ.get("STORAGE_PREFIX", "memory://")
 
 
-async def tool_runner(store: ObjectStore, config: dict) -> Optional[dict | str]:
+async def tool_runner(
+    store: ObjectStore, config: dict, store_path: str
+) -> Optional[dict | str]:
     try:
         response = requests.post(
             config["tool_path"],
@@ -34,10 +36,16 @@ async def tool_runner(store: ObjectStore, config: dict) -> Optional[dict | str]:
         output_format = response.headers["content-type"].split("/")[1]
         file_name = f"{uuid4()}.{output_format}"
         store.put(file_name, BytesIO(response.content))
+
+        if store_path.startswith("gs://"):
+            store_path = store_path.replace(
+                "gs://", "https://storage.cloud.google.com/"
+            )
+
         return {
             "file_name": file_name,
             "mime_type": output_format,
-            "url": f"{STORAGE_PREFIX}/{file_name}",
+            "url": f"{store_path}/{file_name}",
             "response_headers": response_headers["response_headers"],
         }
     else:

@@ -20,8 +20,6 @@ from synth_machine.config import (
 from synth_machine.runners import (
     jq_runner,
     tool_runner,
-    STORAGE_PREFIX,
-    STORAGE_OPTIONS,
 )
 from synth_machine.cost import BaseCost
 from synth_machine.tools import Tool
@@ -70,6 +68,8 @@ class Synth(BaseCost):
         config: dict,
         memory: dict = {},
         store: ObjectStore = ObjectStore(STORAGE_PREFIX, STORAGE_OPTIONS),
+        storage_path: str = "memory://",
+        storage_options: dict = {},
         user: str = str(uuid.uuid4()),
         session_id: str = str(uuid.uuid4()),
         tools: List[Tool] = [],
@@ -101,7 +101,8 @@ class Synth(BaseCost):
             transitions=self.transitions,
         )
         self.buffer = {}
-        self.store = store
+        self.store = ObjectStore(storage_path, storage_options)
+        self.storage_path = storage_path
         self.tools = tools
 
     def current_state(self) -> str:
@@ -236,7 +237,9 @@ class Synth(BaseCost):
                     user=self.user,
                 )
                 logging.info(f"Tool config: {config}")
-                predicted_json = await tool_runner(store=self.store, config=config)
+                predicted_json = await tool_runner(
+                    store=self.store, config=config, store_path=self.storage_path
+                )
 
                 if not predicted_json:
                     yield [
