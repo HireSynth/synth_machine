@@ -872,13 +872,13 @@ pyarrow = ["pyarrow (>=7.0)"]
 
 [[package]]
 name = "openai"
-version = "1.28.1"
+version = "1.31.0"
 description = "The official Python library for the openai API"
 optional = true
 python-versions = ">=3.7.1"
 files = [
-    {file = "openai-1.28.1-py3-none-any.whl", hash = "sha256:943e0d0d587b9a62f99bd3acbaf479ae5362986e5fff013f57b5b7bde85cce93"},
-    {file = "openai-1.28.1.tar.gz", hash = "sha256:8a3adbba16882434768d76fd3129fcc9b40ace98f8d55a6ddacfc05c4096ac30"},
+    {file = "openai-1.31.0-py3-none-any.whl", hash = "sha256:82044ee3122113f2a468a1f308a8882324d09556ba5348687c535d3655ee331c"},
+    {file = "openai-1.31.0.tar.gz", hash = "sha256:54ae0625b005d6a3b895db2b8438dae1059cffff0cd262a26e9015c13a29ab06"},
 ]
 
 [package.dependencies]
@@ -1762,4 +1762,4 @@ togetherai = ["openai"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11,<4.0"
-content-hash = "e85abc563f10e19ab105150729b6dcfff3b08ce2b82d6ce60ee0c511b0a49194"
+content-hash = "b2d82e4fac8e9735b8569bcb49e86ac15e4bf020b1a3e5bfd7f2d81152789a2b"
