@@ -1,0 +1,14 @@
+[
+  {
+      "trigger": "1",
+      "source": "theme",
+      "dest": "select",
+      "inputs": [{"key": "test_string"}],
+      "outputs": [{"key": "duplicate", "udf": "duplicate_string"}]
+  },
+  {
+      "trigger": "2",
+      "source": "select",
+      "dest": "dnd"
+  }
+]

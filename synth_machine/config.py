@@ -7,6 +7,7 @@ from jinja2 import Template, StrictUndefined
 from synth_machine.executor_factory import get_executor
 from synth_machine.executors.base import BaseExecutor
 from synth_machine.machine_config import ModelConfig
+from synth_machine.rag import RAGConfig
 from synth_machine.synth_definition import Output, Input
 import tiktoken
 
@@ -84,10 +85,31 @@ def prompt_for_transition(
                 **inputs  # type: ignore
             )
         except Exception as e:
-            logging.warning(f"Undefined variable in prompt: {e}")
+            logging.error(f"Undefined variable in prompt: {e}")
             return ("", str(e))
         return (dedent(prompt).strip(), None)
     return ("", f"Prompt template not provided, got {prompt_template}")
+
+
+def rag_query_setup(
+    output_definition: Output, inputs: Input, default_rag_config: RAGConfig
+) -> Tuple[Optional[dict], Optional[str]]:
+    rag_prompt, prompt_err = prompt_for_transition(
+        inputs=inputs,
+        prompt_template=output_definition.rag,
+    )
+    if prompt_err:
+        return (None, prompt_err)
+    logging.debug(f"""RAG PROMPT: <<<{rag_prompt}>>>""")
+
+    rag_config = RAGConfig(
+        **(
+            default_rag_config.dict() | output_definition.rag_config.dict()
+            if output_definition.rag_config
+            else default_rag_config.dict()
+        )
+    )
+    return ({"query": rag_prompt, "config": rag_config}, None)
 
 
 async def prompt_setup(

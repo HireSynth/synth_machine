@@ -16,6 +16,7 @@ from synth_machine.config import (
     prompt_setup,
     prompt_for_transition,
     tool_setup,
+    rag_query_setup,
 )
 from synth_machine.runners import (
     jq_runner,
@@ -26,6 +27,7 @@ from synth_machine.runners import (
 from synth_machine.cost import BaseCost
 from synth_machine.tools import Tool
 from synth_machine.synth_definition import SynthDefinition, Output, Input, Transition
+from synth_machine.rag import RAG
 
 
 class Model:
@@ -47,6 +49,7 @@ class FailureState(StrEnum):
     FAILED = "FAILED"
     LOOP_FAILURE = "LOOP_FAILED"
     OUTPUT_VALIDATION_FAILED = "OUTPUT_VALIDATION_FAILED"
+    NOT_IMPLEMENTED = "NOT IMPLEMENTED"
 
 
 class PostProcessTasks(StrEnum):
@@ -59,7 +62,9 @@ class OperationPriority(StrEnum):
     JINJA = "jinja"
     PROMPT = "prompt"
     RESET = "reset"
+    UDF = "udf"
     TOOL = "tool"
+    RAG = "rag"
 
 
 class Synth(BaseCost):
@@ -73,11 +78,13 @@ class Synth(BaseCost):
         user: str = str(uuid.uuid4()),
         session_id: str = str(uuid.uuid4()),
         tools: List[Tool] = [],
+        rag_runner: Optional[RAG] = None,
+        user_defined_functions: dict = {},
     ) -> None:
-        config = SynthDefinition(**config)
+        self.config = SynthDefinition(**config)
         self.user = user
         self.session_id = session_id
-        self.raw_transitions = config.transitions
+        self.user_defined_functions = user_defined_functions
         self.transitions = list(
             map(
                 lambda t: {
@@ -85,17 +92,16 @@ class Synth(BaseCost):
                     "source": t.source,
                     "dest": t.dest,
                 },
-                self.raw_transitions,
+                self.config.transitions,
             )
         )
-        self.raw_states = config.states
-        self.state_names = list(map(lambda s: s.name, self.raw_states))
-        self.memory: dict = config.initial_memory | memory
+        self.state_names = list(map(lambda s: s.name, self.config.states))
+        self.memory: dict = self.config.initial_memory | memory
         self._model = Model()
-        self.default_model_config = config.default_model_config
+        self.default_model_config = self.config.default_model_config
         self._machine = Machine(
             auto_transitions=False,
-            initial=config.initial_state,
+            initial=self.config.initial_state,
             model=self._model,
             states=self.state_names,
             transitions=self.transitions,
@@ -103,6 +109,7 @@ class Synth(BaseCost):
         self.buffer = {}
         self.store = store
         self.tools = tools
+        self.rag_runner = rag_runner
 
     def current_state(self) -> str:
         return self._model.state  # type: ignore
@@ -112,13 +119,13 @@ class Synth(BaseCost):
     ) -> List[Transition]:
         return [
             transition
-            for transition in self.raw_transitions
+            for transition in self.config.transitions
             if transition.trigger
             in self._machine.get_triggers(state or self.current_state())
         ]
 
     def get_raw_state(self, state: str):
-        return [s for s in self.raw_states if s.name == state][0]
+        return [s for s in self.config.states if s.name == state][0]
 
     def machine_update(self, transition, set_active_trigger=False, state=None):
         return [
@@ -190,8 +197,42 @@ class Synth(BaseCost):
             if getattr(output_definition, operation, None)
         ]
         operation = operation_list[0] if operation_list else None
-        logging.debug(f"operation: {operation}")
         match operation:
+            case OperationPriority.UDF:
+                logging.debug(f"Custom user defined function for output: {output_key}")
+
+                if output_definition.udf not in self.user_defined_functions.keys():
+                    yield [
+                        FailureState.FAILED,
+                        output_key,
+                        f"Method: {output_definition.udf} not in registered user defined functions: {self.user_defined_functions.keys()}",
+                    ]
+                self.memory[output_key] = self.user_defined_functions[
+                    output_definition.udf
+                ](self.memory)
+
+            case OperationPriority.RAG:
+                logging.debug(f"RAG retrieval for output: {output_key}")
+                match output_definition.operation:
+                    # TODO: Add "chunk" and "embed" cases to create dynamic RAG
+                    case "query":
+                        rag_config, err = rag_query_setup(
+                            output_definition, inputs, self.config.default_rag_config
+                        )
+                        if err or not rag_config:
+                            logging.error(f"RAG query setup failure: {err}")
+                            yield [FailureState.FAILED, output_key, err]
+                            return
+
+                        self.memory[output_key] = await self.rag_runner.query(  # type: ignore
+                            rag_config["query"], rag_config["config"]
+                        )
+                    case _:
+                        yield [
+                            FailureState.NOT_IMPLEMENTED,
+                            output_key,
+                            f"RAG Operation: {output_definition.get('operation')} not implemented yet",
+                        ]
             case OperationPriority.JINJA:
                 template, _ = prompt_for_transition(
                     inputs=inputs, prompt_template=output_definition.jinja
@@ -526,7 +567,7 @@ class Synth(BaseCost):
     def _transition_for_trigger(self, trigger: str):
         return [
             transition
-            for transition in self.raw_transitions
+            for transition in self.config.transitions
             if transition.trigger == trigger
         ][0]
 
@@ -537,7 +578,7 @@ class Synth(BaseCost):
         async for event in self.execute_for_trigger(initial_trigger=trigger):  # type: ignore
             yield event
 
-    async def trigger(self, trigger: str, inputs: dict = {}):
+    async def trigger(self, trigger: str, params: dict = {}):
         filtered_transition = list(
             filter(
                 lambda transition: transition.trigger == trigger,
@@ -548,10 +589,9 @@ class Synth(BaseCost):
             raise TransitionError(
                 f"No transition: {trigger} exists at state: {self.current_state()}"
             )
-
         transition_outputs = [val.key for val in filtered_transition[0].outputs]  # type: ignore
 
-        async for value in self.streaming_trigger(trigger, params=inputs):
+        async for value in self.streaming_trigger(trigger, params=params):
             logging.debug(value)
             if value[0] == FailureState.FAILED:
                 logging.error(f"Failure: {value}")

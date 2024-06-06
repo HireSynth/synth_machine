@@ -1,6 +1,6 @@
 from unittest import main
 from unittest.mock import patch
-
+from synth_machine.user_defined_functions import udf
 from tests.test_synth_machine import SynthMachineTest
 
 
@@ -15,6 +15,26 @@ class SynthMachineSuccessTest(SynthMachineTest):
         )
         self.assertEqual(await synth.trigger(simple_transitions[0]["trigger"]), {})
         self.assertEqual(synth.current_state(), self.states[1]["name"])
+
+    async def test_user_defined_functions(self):
+        @udf
+        def duplicate_string(memory):
+            return memory["test_string"] + memory["test_string"]
+
+        udf_transitions = self.helper.get_transistions("udf_transitions")
+        synth = self.helper.create_synth_machine(
+            initial_state=self.states[0]["name"],
+            states=self.states,
+            transitions=udf_transitions,
+            memory=self.FAKE_MEMORY,
+        )
+        synth.user_defined_functions = {"duplicate_string": duplicate_string}
+        self.assertEqual(
+            await synth.trigger(
+                udf_transitions[0]["trigger"], params={"test_string": "hello"}
+            ),
+            {"duplicate": "hellohello"},
+        )
 
     async def test_if_simple_synth_moves_between_states(self):
         simple_transitions = self.helper.get_transistions("simple_transistions")
