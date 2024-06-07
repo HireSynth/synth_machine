@@ -84,7 +84,13 @@ class Synth(BaseCost):
         self.config = SynthDefinition(**config)
         self.user = user
         self.session_id = session_id
-        self.user_defined_functions = user_defined_functions
+        if user_defined_functions:
+            logging.warning(
+                "Experimental: User Defined Functions are ran at the users risk!"
+            )
+            self.user_defined_functions = user_defined_functions
+        else:
+            self.user_defined_functions = {}
         self.transitions = list(
             map(
                 lambda t: {
