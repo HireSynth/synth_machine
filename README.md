@@ -52,7 +52,7 @@ agent = Synth(
 
 ```
 
-The `SynthDefinition` can be found in [synth_machine/synth_definition.py](synth_machine/synth_definition.py). The Pydantic BaseModels which make up `SynthDefinition` will be the most accurate representation of a `Synth`.  
+The `SynthDefinition` can be found in [SynthDefinition Docs](./synth_definition.md) or [synth_machine/synth_definition.py](synth_machine/synth_definition.py). The Pydantic BaseModels which make up `SynthDefinition` will be the most accurate representation of a `Synth`.  
 We expect the specification to have updates between major versions. 
 
 ### Agent state and possible triggers
@@ -68,7 +68,6 @@ agent.interfaces_for_available_triggers()
 
 
 ### Run a Synth
-
 
 
 #### Batch
@@ -188,19 +187,130 @@ Retrieval augemented generation is a powerful tool to improve LLM responses by p
 
 It is easy to integrate multiple providers and vector databases. Over time there will be supported and community RAG implementations across a wide variety of embeddings providers and vector databases.
 
-#### **Store**  
-Any file created by a tool will automatically go to your ObjectStore (https://pypi.org/project/object-store-python/).  
-Then `agent.store.get(file_name)` will retrieve the file.
+#### RAG Example Qdrant & FastEmbed
+The following RAG class is ideal for experimenting with local RAG setups on CPU. 
+```
+pip install qdrant-client, fastembed
+```
+**Define RAG class**
+```
+from synth_machine.rag import RAG
+from qdrant_client import AsyncQdrantClient
+from fastembed import TextEmbedding
+from typing import List, Optional
+from qdrant_client.models import Distance, VectorParams, PointStruct
 
-This can easily be extended by providing your own ObjectStore, allowing easy integration to:
+
+class Qdrant(RAG):
+
+    """
+    VectorDB: Qdrant - https://github.com/qdrant/qdrant
+    Embeddings: FastEmbed - https://github.com/qdrant/fastembed
+
+    This provides fast and lightweight on-device CPU embeddings creation and 
+    similarity search using Qdrant in memory.
+    """
+    
+    def __init__(
+        self,
+        collection_name: str,
+        embedding_model: str="BAAI/bge-small-en-v1.5",
+        embedding_dimensions: int=384,
+        embedding_threads: int=-1,
+        qdrant_location: str=":memory:",
+    ):
+        self.embedding_model = TextEmbedding(
+            model_name=embedding_model,
+            threads=embedding_threads
+        )
+        self.embedding_dimensions = embedding_dimensions
+        self.qdrant = AsyncQdrantClient(qdrant_location)
+        self.collection_name = collection_name
+    
+    async def create_collection(self) -> bool:
+        if await self.qdrant.collection_exists(self.collection_name):
+            return True
+        else:
+            return await self.qdrant.create_collection(
+                collection_name=self.collection_name,
+                vectors_config=VectorParams(
+                    size=self.embedding_dimensions, # maps to 'BAAI/bge-small-en-v1.5' model dimensions
+                    distance=Distance.COSINE
+                ) 
+            )
+    
+    async def embed(self, documents: List[str], metadata: Optional[List[dict]]=None):
+        if metadata and len(documents) != len(metadata):
+            raise ValueError("documents and metadata must be the same length")
+        embedding_list = list(
+            self.embedding_model.embed(documents)
+        )
+        upsert_response = await self.qdrant.upsert(
+            collection_name=self.collection_name,
+            points=[
+                PointStruct(
+                    id=i,
+                    vector=list(vector),
+                    payload=metadata[i]
+                )
+                for i, vector in enumerate(embedding_list)
+            ]
+        )
+        return upsert_response.status
+        
+
+    async def query(self, prompt: str, rag_config: RAGConfig) -> List[dict]:
+        embedding = next(self.embedding_model.embed([prompt]))
+            
+        similar_responses = await self.qdrant.search(
+            collection_name=self.collection_name,
+            query_vector=embedding,
+            limit=rag_config.n
+        )
+        return [
+            point.payload for point in similar_responses
+        ]
+```
+
+**Now initiate the Qdrant class and provide when defining `Synth`.**
+
+```
+qdrant = Qdrant(collection_name="tofu_examples")
+await qdrant.create_collection()
+
+agent = Synth(
+    ...
+    rag_runner=Qdrant
+)
+```
+
+#### **Store**  
+
+Tools can return a variety of different objects. Any file created by a tool will automatically go to your `agent.store`.
+We use [ObjectStore](https://pypi.org/project/object-store-python/) for file storage, with `ObjectStore(":memory:")`as the default.
+
+To retrieve a file: `agent.store.get(file_name)`
+
+ObjectStore allowing easy integration to:
 - Local file store
 - S3
 - GCS
 - Azure
 
+#### Example GCS object store
+```
+from synth_machine.machine import ObjectStore
+
+agent = Agent(
+    ...
+    store=ObjectStore("gs://[bucket_name]/[prefix]))
+)
+```
+
 ### User Defined Functions
 
-Any custom functionality can be defined as a user defined function (UDF). These take memory as input and allows you to run custom functionality as part of the `synth-machine.
+Any custom functionality can be defined as a user defined function (UDF).  
+These take `Synth.memory`as input and allows you to run custom functionality as part of the `synth-machine`.  
 
 ```
 # Define postprocess function
@@ -230,3 +340,5 @@ agent = Synth(
     - key: example_udf
       udf: abc
 ```
+
+**Note:** Any non trivial functionality should be a tool and not UDF.  
