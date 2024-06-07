@@ -1,6 +1,7 @@
 from pydantic import BaseModel, Field, model_validator
 from typing import Optional, List
 from synth_machine.machine_config import ModelConfig
+from synth_machine.rag import RAGConfig
 
 
 class Loop(BaseModel):
@@ -32,6 +33,7 @@ class Output(BaseModel):
     input_name_map: Optional[dict] = None
     key: str
     config: Optional[ModelConfig] = Field(alias="model_config", default=None)
+    rag_config: Optional[RAGConfig] = None
     prompt: Optional[str] = None
     reset: Optional[bool] = None
     schema_dict: Optional[dict] = Field(alias="schema", default=None)
@@ -42,6 +44,9 @@ class Output(BaseModel):
     interleave: Optional[list] = None
     route: Optional[str] = None
     jq: Optional[str] = None
+    rag: Optional[str] = None
+    udf: Optional[str] = None
+    operation: Optional[str] = None
 
     @model_validator(mode="before")
     def check_prompts_schema(cls, values):
@@ -81,6 +86,7 @@ class ShareProfile(BaseModel):
 
 class SynthDefinition(BaseModel):
     default_model_config: Optional[ModelConfig] = ModelConfig()
+    default_rag_config: RAGConfig = RAGConfig()
     initial_memory: dict = {}
     initial_state: str
     shareProfile: Optional[ShareProfile] = None

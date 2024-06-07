@@ -1,3 +1,3 @@
-from synth_machine.machine import Synth, Tool
+from synth_machine.machine import Synth, Tool, RAG
 
-__all__ = ["Synth", "Tool"]
+__all__ = ["Synth", "Tool", "RAG"]
