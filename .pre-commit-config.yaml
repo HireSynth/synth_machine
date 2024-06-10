@@ -39,7 +39,7 @@ repos:
       stages: [commit-msg]
 
 - repo: https://github.com/RobertCraigie/pyright-python
-  rev: v1.1.364
+  rev: v1.1.366
   hooks:
     - id: pyright
       stages: [pre-commit]

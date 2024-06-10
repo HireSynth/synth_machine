@@ -9,17 +9,21 @@ on:
 jobs:
   pre-commit:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ['3.10', '3.11', '3.12']  # List Python versions here
     steps:
     - uses: actions/checkout@v4
       with:
         set-safe-directory: true
-    - uses: actions/setup-python@v5
+    - name: Set up Python
+      uses: actions/setup-python@v5
       with:
-        python-version: '3.12'
+        python-version: ${{ matrix.python-version }}
         cache: pip
-    - name: tests
+    - name: Install dependencies and run tests
       run: |
-        pip install -U pip poetry deptry
+        pip install -U pip poetry
         poetry install --sync
         poetry run deptry .
         poetry run coverage run -m unittest discover

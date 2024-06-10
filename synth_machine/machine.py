@@ -2,7 +2,6 @@ import json
 import logging
 import itertools
 import uuid
-from enum import StrEnum
 from json.decoder import JSONDecodeError
 from typing import List, Optional
 
@@ -29,6 +28,12 @@ from synth_machine.tools import Tool
 from synth_machine.synth_definition import SynthDefinition, Output, Input, Transition
 from synth_machine.rag import RAG
 
+try:
+    from enum import StrEnum
+except ImportError:
+    # For python versions <3.11, using aenum for backward compatibility
+    from aenum import StrEnum
+
 
 class Model:
     pass
@@ -38,25 +43,25 @@ class TransitionError(Exception):
     pass
 
 
-class YieldTasks(StrEnum):
+class YieldTasks(StrEnum):  # type: ignore
     CHUNK = "CHUNK"
     MODEL_CONFIG = "MODEL_CONFIG"
     SET_MEMORY = "SET_MEMORY"
     SET_ACTIVE_OUTPUT = "SET_ACTIVE_OUTPUT"
 
 
-class FailureState(StrEnum):
+class FailureState(StrEnum):  # type: ignore
     FAILED = "FAILED"
     LOOP_FAILURE = "LOOP_FAILED"
     OUTPUT_VALIDATION_FAILED = "OUTPUT_VALIDATION_FAILED"
     NOT_IMPLEMENTED = "NOT IMPLEMENTED"
 
 
-class PostProcessTasks(StrEnum):
+class PostProcessTasks(StrEnum):  # type: ignore
     JQ = "jq"
 
 
-class OperationPriority(StrEnum):
+class OperationPriority(StrEnum):  # type: ignore
     APPEND = "append"
     INTERLEAVE = "interleave"
     JINJA = "jinja"
@@ -145,7 +150,7 @@ class Synth(BaseCost):
     async def post_process(
         self, output_key: str, output_definition: Output, chunk: str
     ):
-        new_buffer = f"{self.buffer.get(output_key, "")}{chunk}"
+        new_buffer = f"{self.buffer.get(output_key, '')}{chunk}"
         if new_buffer != self.buffer.get(output_key, ""):
             self.buffer[output_key] = new_buffer
             try:
@@ -156,7 +161,7 @@ class Synth(BaseCost):
             result = self.memory
         operation_list = [
             operation
-            for operation in PostProcessTasks
+            for operation in PostProcessTasks  # type: ignore
             if getattr(output_definition, operation, None)
         ]
         operation = operation_list[0] if operation_list else None
@@ -199,7 +204,7 @@ class Synth(BaseCost):
 
         operation_list = [
             operation
-            for operation in OperationPriority
+            for operation in OperationPriority  # type: ignore
             if getattr(output_definition, operation, None)
         ]
         operation = operation_list[0] if operation_list else None
@@ -484,7 +489,7 @@ class Synth(BaseCost):
             post_process_tasks = [
                 (output_definition.key, output_definition)
                 for output_definition in transition.outputs
-                for post_processing_task in PostProcessTasks
+                for post_processing_task in PostProcessTasks  # type: ignore
                 if getattr(output_definition, post_processing_task, None)
             ]
             for output_definition in transition.outputs:
