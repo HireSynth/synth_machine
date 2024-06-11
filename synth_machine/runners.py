@@ -33,11 +33,11 @@ async def tool_runner(store: ObjectStore, config: dict) -> Optional[dict | str]:
     if config["output_mime_types"]:
         output_format = response.headers["content-type"].split("/")[1]
         file_name = f"{uuid4()}.{output_format}"
-        store.put(file_name, BytesIO(response.content))
+        await store.put_async(file_name, BytesIO(response.content))
         return {
             "file_name": file_name,
             "mime_type": output_format,
-            "url": f"{STORAGE_PREFIX}/{file_name}",
+            "url": f"{store.root_url}/{file_name}",
             "response_headers": response_headers["response_headers"],
         }
     else:

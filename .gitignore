@@ -168,3 +168,5 @@ cython_debug/
 requirements.txt
 *lcov
 report.txt
+
+poetry.lock
