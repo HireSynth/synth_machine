@@ -52,3 +52,9 @@ repos:
       stages: [pre-commit]
     - id: ruff-format
       stages: [pre-commit]
+
+- repo: https://github.com/fpgmaas/deptry.git
+  rev: "0.16.1"
+  hooks:
+    - id: deptry
+      args: ["--ignore", "DEP001,DEP002"]
