@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "synth_machine"
-version = "0.4.1"
+version = "0.4.2"
 description = ""
 authors = [
   "David <david@hiresynth.ai>",
@@ -23,7 +23,7 @@ transitions = "^0.9.0"
 anthropic = {version="^0.28.0", optional=true}
 openai = {version="1.33.0", optional=true}
 aenum = "^3.1.15"
-object-stores = {git = "https://github.com/HireSynth/object-store-python.git", rev="feature/exposePath"}
+object-stores = {git = "https://github.com/HireSynth/object-store-python.git", branch="feature/exposePath"}
 
 [tool.poetry.extras]
 openai = ["openai"]
