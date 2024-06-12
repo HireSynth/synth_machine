@@ -23,7 +23,7 @@ transitions = "^0.9.0"
 anthropic = {version="^0.28.0", optional=true}
 openai = {version="1.33.0", optional=true}
 aenum = "^3.1.15"
-object-stores = {git = "https://github.com/HireSynth/object-store-python.git", rev="feature/exposePath"}
+hiresynth-object-store-python = "^0.1.4"
 
 [tool.poetry.extras]
 openai = ["openai"]
