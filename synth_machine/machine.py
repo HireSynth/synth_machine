@@ -198,7 +198,6 @@ class Synth(BaseCost):
             json.loads(json.dumps(self.memory.get(output_key, {}))),
         ]
 
-        config = {}
         predicted = ""
         predicted_json = ""
 
@@ -280,21 +279,26 @@ class Synth(BaseCost):
                     json.loads(json.dumps(keys)),
                 ]
             case OperationPriority.TOOL:
-                config = await tool_setup(
+                tool_config, err = await tool_setup(
                     tools=self.tools,
                     output_definition=output_definition,
                     inputs=inputs,
                     id=str(self.session_id),
-                    user=self.user,
                 )
-                logging.info(f"Tool config: {config}")
-                predicted_json = await tool_runner(store=self.store, config=config)
+                if err or not tool_config:
+                    logging.error(err)
+                    yield [FailureState.FAILED, output_key, err]
+                    return
+                logging.info(f"Tool config: {tool_config}")
+                predicted_json = await tool_runner(
+                    store=self.store, tool_config=tool_config
+                )
 
                 if not predicted_json:
                     yield [
                         FailureState.FAILED,
                         output_key,
-                        f"Failed to call tool {config}",
+                        f"Failed to call tool {tool_config}",
                     ]
 
                 logging.debug(f"Tool output: {predicted_json}")
@@ -310,13 +314,15 @@ class Synth(BaseCost):
                         f"💾 Tool Saved {output_key}:{self.memory[output_key]}"
                     )
 
-                token_cost = config["tokens"]["execution"]
-                token_usage = await self.calculate_tool_token_usage(config, token_cost)
+                token_cost = tool_config.tokens.execution
+                token_usage = await self.record_tool_token_usage(
+                    self.user, self.session_id, tool_config, token_cost
+                )
                 yield [
                     "TOOL_OUTPUT",
                     output_key,
                     token_usage,
-                    config.get("tool_id"),
+                    tool_config.tool_id,
                 ]
                 yield [
                     YieldTasks.SET_MEMORY,
@@ -324,41 +330,42 @@ class Synth(BaseCost):
                     json.loads(json.dumps(predicted_json)),
                 ]
             case OperationPriority.PROMPT:
-                config, err = await prompt_setup(
+                llm_config, err = await prompt_setup(
                     output_definition=output_definition,
                     inputs=inputs,
                     default_model_config=self.default_model_config.dict(by_alias=True)  # type: ignore
                     | transition.model_config,
                 )
-                if err or not config:
+                if err or not llm_config:
                     logging.error(err)
                     yield [FailureState.FAILED, output_key, err]
                     return
 
                 while True:
-                    executor = {"executor": config.model_config.executor}
+                    executor = {"executor": llm_config.model_config.executor}
                     yield [YieldTasks.MODEL_CONFIG, output_key, executor]
                     logging.debug(
-                        f"🤖 Execution started ({config.model_config.executor})"
+                        f"🤖 Execution started ({llm_config.model_config.executor})"
                     )
-                    llm_name = config.model_config.llm_name
+                    llm_name = llm_config.model_config.llm_name
                     tokens = {
                         "input": 0,
                         "output": 0,
                     }
-                    async for token, token_info in config.executor.generate(
-                        user_prompt=config.user_prompt,
-                        system_prompt=config.system_prompt,
+                    async for token, token_info in llm_config.executor.generate(
+                        user_prompt=llm_config.user_prompt,
+                        system_prompt=llm_config.system_prompt,
                         json_schema=schema,
-                        model_config=config.model_config,
+                        model_config=llm_config.model_config,
                         user=self.user,
                     ):
                         predicted = f"{predicted}{str(token)}"
                         stage = token_info.get("token_type", "output")
                         tokens_used = token_info.get("tokens")
-                        token_cost_per_chunk = self.calculate_chunk_cost(
-                            config, tokens_used
+                        token_cost_per_chunk = await self.calculate_chunk_cost(
+                            stage, llm_config, tokens_used
                         )
+
                         tokens[stage] += token_cost_per_chunk
                         yield [
                             str(YieldTasks.CHUNK),
@@ -369,8 +376,10 @@ class Synth(BaseCost):
                             stage,
                             llm_name,
                         ]
-                    await self.calculate_prompt_token_usage(
-                        llm_name,
+                    await self.record_prompt_token_usage(
+                        self.user,
+                        self.session_id,
+                        llm_config,
                         input_tokens=tokens.get("input", 0),
                         output_tokens=tokens.get("output", 0),
                     )  # type: ignore
@@ -382,7 +391,7 @@ class Synth(BaseCost):
                         predicted_json = predicted
                     else:
                         try:
-                            predicted_json = config.executor.post_process(
+                            predicted_json = llm_config.executor.post_process(
                                 json.loads(predicted.strip())
                             )  # type: ignore
                             validate(

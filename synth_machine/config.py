@@ -22,15 +22,29 @@ class SynthConfig:
     user_prompt: str
 
 
+@dataclass
+class ToolTokenUseage:
+    execution: float
+    multiplier: float
+
+
+@dataclass
+class ToolConfig:
+    tool_id: str
+    payload: dict
+    output_mime_types: list[str]
+    tool_path: str
+    tokens: ToolTokenUseage
+
+
 async def tool_setup(
-    output_definition: Output, inputs: dict, id: str, user: str, tools: list
-) -> dict:
+    output_definition: Output, inputs: dict, id: str, tools: list
+) -> Tuple[Optional[ToolConfig], Optional[str]]:
     tool_search = [tool for tool in tools if tool.name == output_definition.tool]
     if not tool_search:
-        logging.warning(
-            f"Tool not found: '{output_definition.tool}'. Available tools: {[tool.name for tool in tools]}"
-        )
-        return {}
+        error = f"Tool not found: '{output_definition.tool}'. Available tools: {[tool.name for tool in tools]}"
+        logging.error(error)
+        return (None, error)
     tool = tool_search[0]
     tool_path = f"{tool.api_endpoint}{output_definition.route}"
     output_mime_types = [
@@ -58,17 +72,19 @@ async def tool_setup(
         tokens_multiplied = 0
 
     logging.debug(f"Tool payload: {tool_payload}")
-    return {
-        "tool_id": tool.id,  # type: ignore
-        "owner": user,
-        "payload": tool_payload,
-        "output_mime_types": output_mime_types,
-        "tool_path": tool_path,
-        "tokens": {
-            "execution": tool.tokens_per_execution,
-            "multiplier": tokens_multiplied,
-        },
-    }
+    return (
+        ToolConfig(
+            tool_id=tool.id,  # type: ignore
+            payload=tool_payload,
+            output_mime_types=output_mime_types,
+            tool_path=tool_path,
+            tokens=ToolTokenUseage(
+                execution=tool.tokens_per_execution,
+                multiplier=tokens_multiplied,
+            ),
+        ),
+        None,
+    )
 
 
 def prompt_for_transition(

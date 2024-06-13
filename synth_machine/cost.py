@@ -1,14 +1,26 @@
-from synth_machine.config import SynthConfig
+from synth_machine.config import SynthConfig, ToolConfig
 
 
 class BaseCost:
-    async def calculate_tool_token_usage(self, config: dict, num_tokens: int) -> int:
+    async def record_tool_token_usage(
+        self, user: str, session_id: str, tool_config: ToolConfig, num_tokens: float
+    ) -> float:
         return num_tokens
 
-    async def calculate_prompt_token_usage(
-        self, llm_id, input_tokens: int = 0, output_tokens: int = 0
+    async def record_prompt_token_usage(
+        self,
+        user: str,
+        session_id: str,
+        synth_config: SynthConfig,
+        input_tokens: int = 0,
+        output_tokens: int = 0,
     ) -> int:
         return input_tokens + output_tokens
 
-    def calculate_chunk_cost(self, config: SynthConfig, num_tokens: int) -> int:
+    async def calculate_chunk_cost(
+        self,
+        stage: str,
+        synth_config: SynthConfig,
+        num_tokens: int,
+    ) -> int:
         return num_tokens
