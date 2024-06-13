@@ -9,16 +9,20 @@ from object_store import ObjectStore
 import json
 import os
 
+from synth_machine.config import ToolConfig
+
 
 STORAGE_OPTIONS = json.loads(os.environ.get("STORAGE_OPTIONS", "{}"))
 STORAGE_PREFIX = os.environ.get("STORAGE_PREFIX", "memory://")
 
 
-async def tool_runner(store: ObjectStore, config: dict) -> Optional[dict | str]:
+async def tool_runner(
+    store: ObjectStore, tool_config: ToolConfig
+) -> Optional[dict | str]:
     try:
         response = requests.post(
-            config["tool_path"],
-            json=config["payload"],
+            tool_config.tool_path,
+            json=tool_config.payload,
         )
         response_headers = {
             "response_headers": {
@@ -30,7 +34,7 @@ async def tool_runner(store: ObjectStore, config: dict) -> Optional[dict | str]:
         logging.error(f"Error in running tool {e}")
         return
 
-    if config["output_mime_types"]:
+    if tool_config.output_mime_types:
         output_format = response.headers["content-type"].split("/")[1]
         file_name = f"{uuid4()}.{output_format}"
         await store.put_async(file_name, BytesIO(response.content))
