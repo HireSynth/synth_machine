@@ -7,7 +7,7 @@ from tests.test_mocks import (
 from tests.test_helper import TestHelper
 from tests.test_utils import json_file_loader
 from synth_machine.machine_config import ModelConfig
-from synth_machine.config import SynthConfig
+from synth_machine.operator_setup import SynthConfig
 
 
 class SynthMachineTest(IsolatedAsyncioTestCase):

@@ -1,4 +1,4 @@
-from synth_machine.config import SynthConfig, ToolConfig
+from synth_machine.operator_setup import SynthConfig, ToolConfig
 
 
 class BaseCost:
