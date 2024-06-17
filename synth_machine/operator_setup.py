@@ -3,7 +3,6 @@ from dataclasses import dataclass
 from textwrap import dedent
 from typing import Optional, Tuple
 from jinja2 import Template, StrictUndefined
-
 from synth_machine.executor_factory import get_executor
 from synth_machine.executors.base import BaseExecutor
 from synth_machine.machine_config import ModelConfig
@@ -129,7 +128,10 @@ def rag_query_setup(
 
 
 async def prompt_setup(
-    output_definition: Output, inputs: Input, default_model_config: dict
+    output_definition: Output,
+    inputs: dict,
+    default_model_config: ModelConfig,
+    transition_model_config: ModelConfig,
 ) -> Tuple[Optional[SynthConfig], Optional[str]]:
     user_prompt_template = output_definition.prompt
     user_prompt, prompt_err = prompt_for_transition(
@@ -154,14 +156,14 @@ async def prompt_setup(
 
     model_config = ModelConfig(
         **(
-            default_model_config | output_definition.config.dict()
-            if output_definition.config
-            else default_model_config
+            default_model_config.model_dump()
+            | transition_model_config.model_dump(exclude_none=True)
+            | output_definition.config.model_dump(exclude_none=True)  # type: ignore
         )
     )
 
     logging.debug(f"Model config {model_config}")
-    executor = get_executor(name=model_config.executor)
+    executor = get_executor(name=model_config.executor)  # type: ignore
 
     return (
         SynthConfig(

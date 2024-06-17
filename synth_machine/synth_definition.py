@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field, model_validator
 from typing import Optional, List
-from synth_machine.machine_config import ModelConfig
+from synth_machine.machine_config import ModelConfig, default_model_config
 from synth_machine.rag import RAGConfig
 
 
@@ -32,7 +32,7 @@ class Output(BaseModel):
     append: Optional[List[str]] = None
     input_name_map: Optional[dict] = None
     key: str
-    config: Optional[ModelConfig] = Field(alias="model_config", default=None)
+    config: Optional[ModelConfig] = Field(alias="model_config", default=ModelConfig())
     rag_config: Optional[RAGConfig] = None
     prompt: Optional[str] = None
     reset: Optional[bool] = None
@@ -75,7 +75,7 @@ class Transition(BaseModel):
     outputs: Optional[List[Output]] = []
     source: str
     trigger: str
-    config: Optional[ModelConfig] = Field(alias="model_config", default={})
+    config: Optional[ModelConfig] = Field(alias="model_config", default=ModelConfig())
 
 
 class ShareProfile(BaseModel):
@@ -85,7 +85,7 @@ class ShareProfile(BaseModel):
 
 
 class SynthDefinition(BaseModel):
-    default_model_config: Optional[ModelConfig] = ModelConfig()
+    default_model_config: ModelConfig = ModelConfig()
     default_rag_config: RAGConfig = RAGConfig()
     initial_memory: dict = {}
     initial_state: str
@@ -114,3 +114,16 @@ class SynthDefinition(BaseModel):
                     f"After value {str(transition.after)} is not part of available triggers {triggers}"
                 )
         return values
+
+
+def synth_definition_setup(synth_config: dict) -> SynthDefinition:
+    synth_definition = SynthDefinition(**synth_config)
+    synth_definition.default_model_config = ModelConfig(
+        **(
+            default_model_config.model_dump()
+            | synth_definition.default_model_config.model_dump(
+                exclude_none=True,
+            )
+        )
+    )
+    return synth_definition

@@ -11,7 +11,7 @@ from object_store import ObjectStore
 from partial_json_parser import loads, OBJ
 from transitions import Machine
 
-from synth_machine.config import (
+from synth_machine.operator_setup import (
     prompt_setup,
     prompt_for_transition,
     tool_setup,
@@ -25,7 +25,12 @@ from synth_machine.runners import (
 )
 from synth_machine.cost import BaseCost
 from synth_machine.tools import Tool
-from synth_machine.synth_definition import SynthDefinition, Output, Input, Transition
+from synth_machine.synth_definition import (
+    Output,
+    Input,
+    Transition,
+    synth_definition_setup,
+)
 from synth_machine.rag import RAG
 
 try:
@@ -86,7 +91,7 @@ class Synth(BaseCost):
         rag_runner: Optional[RAG] = None,
         user_defined_functions: dict = {},
     ) -> None:
-        self.config = SynthDefinition(**config)
+        self.config = synth_definition_setup(config)
         self.user = user
         self.session_id = session_id
         if user_defined_functions:
@@ -333,8 +338,8 @@ class Synth(BaseCost):
                 llm_config, err = await prompt_setup(
                     output_definition=output_definition,
                     inputs=inputs,
-                    default_model_config=self.default_model_config.dict(by_alias=True)  # type: ignore
-                    | transition.model_config,
+                    default_model_config=self.default_model_config,
+                    transition_model_config=transition.config,  # type: ignore
                 )
                 if err or not llm_config:
                     logging.error(err)

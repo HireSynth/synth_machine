@@ -9,7 +9,7 @@ from object_store import ObjectStore
 import json
 import os
 
-from synth_machine.config import ToolConfig
+from synth_machine.operator_setup import ToolConfig
 
 
 STORAGE_OPTIONS = json.loads(os.environ.get("STORAGE_OPTIONS", "{}"))
