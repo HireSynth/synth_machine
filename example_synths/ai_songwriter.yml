@@ -1,0 +1,308 @@
+
+
+states:
+  - name: User_Input
+  - name: Analysis_and_Deconstruction
+    interface:
+      - key: analysed_data
+        componentName: Markdown
+  - name: Idea_Generation_and_Draft_Verses
+  - name: User_Selection_of_Best_Verse
+  - name: Completed_Verse
+    interface:
+      - key: completed_verse
+        componentName: Markdown
+transitions:
+  - dest: Analysis_and_Deconstruction
+    inputs:
+      - key: genre
+        schema:
+          type: string
+        ui_type: textarea
+        examples:
+          - Melodic reggaeton
+          - New age hip hop
+          - Indie rock
+        description: What genre of music?
+      - key: themes
+        schema:
+          type: string
+        ui_type: textarea
+        description: Now provide any themes, vibes or relevant information
+      - key: initial_lyrics
+        schema:
+          type: string
+        ui_type: textarea
+        examples:
+          - No initial lyrics, start from scratch
+        description: Provide any lyrics you've got so far
+      - key: songwriting_analysis_guide
+        schema:
+          type: string
+    source: User_Input
+    outputs:
+      - key: analysed_data
+        prompt: |
+          GENRE: {{ genre }}
+          THEMES: {{ themes }}
+          LYRICS: {{ initial_lyrics }}
+
+          DETAILED_ANALYSIS: 
+        schema:
+          type: string
+        model_config:
+          temperature: 0.3
+          executor: togetherai
+          llm_name: meta-llama/Llama-3-8b-chat-hf
+        system_prompt: >
+          As a world-class songwriter, your task is to analyze the provided
+          lyrics snippet based on the given genre and theme and helping an up
+          and coming genre [GENRE] artist who wants to have an edge with their
+          creative songwriting. 
+
+          Given the following information: - GENRE: A brief description of the
+          genre of music the artist is working in. - THEME: A brief description
+          of the theme or mood the artist wants to convey in the song. - LYRICS:
+          Any provided lyrics snippet that the artist has created so far. 
+
+          You must create the following information: - DETAILED_ANALYSIS: A
+          detailed analysis and deconstruction of the lyrics snippet, using the
+          following steps as a guide: {{ songwriting_analysis_guide }}
+
+          You must provide your analysis and insights based on the steps outlined
+          above, offering constructive feedback and suggestions to help elevate
+          the lyrics and align them with the vision of a world-class songwriter.
+          Only respond in valid markdown with correct headings and formatting
+          and consistency. Think step by step and respond in long form
+    trigger: analyse_lyrics
+  - dest: Analysis_and_Deconstruction
+    inputs:
+      - key: analysed_data
+        schema:
+          type: string
+      - key: genre
+        schema:
+          type: string
+      - key: initial_lyrics
+        schema:
+          type: string
+      - key: themes
+        schema:
+          type: string
+      - key: amend_input
+        schema:
+          type: string
+        ui_type: textarea
+        description: Provide additional information or updates you want
+      - key: songwriting_analysis_guide
+        schema:
+          type: string
+    source: Analysis_and_Deconstruction
+    outputs:
+      - key: analysed_data
+        prompt: >
+          GENRE: {{ genre }} THEMES: {{ themes }} LYRICS: {{ initial_lyrics }}
+
+          DETAILED_ANALYSIS: {{ analysed_data }} ADDITIONAL_CONTEXT: {{
+          amend_input }}
+
+          IMPROVED_ANALYSIS:
+        schema:
+          type: string
+        system_prompt: >
+          As a world-class songwriter, your task is to analyze the provided
+          lyrics snippet based on the given genre and theme and helping an up
+          and coming genre [GENRE] artist who wants to have an edge with their
+          creative songwriting. 
+
+          Given the following information: - GENRE: A brief description of the
+          genre of music the artist is working in. - THEME: A brief description
+          of the theme or mood the artist wants to convey in the song. - LYRICS:
+          Any provided lyrics snippet that the artist has created so far.  -
+          DETAILED_ANALYSIS: A detailed analysis and deconstruction of the
+          lyrics snippet, you have already created. - ADDITIONAL_CONTEXT: Some
+          additional context or information provided by the user.
+
+          You must create the following information: - IMPROVED_ANALYSIS: An
+          improved analysis and deconstruction of the lyrics snippet, using the
+          DETAILED_ANALYSIS and improving by taking into account the
+          ADDITIONAL_CONTEXT. 
+
+          Keep in mind the following steps as a guide: {{
+          songwriting_analysis_guide }}
+    trigger: update_analysis
+  - dest: Idea_Generation_and_Draft_Verses
+    source: Analysis_and_Deconstruction
+    trigger: analysis_complete
+    default: true
+  - dest: User_Selection_of_Best_Verse
+    inputs:
+      - key: genre
+        schema:
+          type: string
+      - key: verse_ideas
+        schema:
+          type: string
+        ui_type: textarea
+        description: What ideas do you have for the next section?
+      - key: analysed_data
+        schema:
+          type: string
+      - key: approved_draft_history
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              verse:
+                type: string
+              verse_title:
+                type: string
+      - key: verse_idea_history
+        schema:
+          type: array
+          items:
+            type: string
+    source: Idea_Generation_and_Draft_Verses
+    outputs:
+      - key: presented_verses
+        prompt: |
+          ## LYRICS_ANALYSIS:
+          {{ analysed_data }}
+          
+          {% if verse_idea_history | length != 0 -%}
+          ## EXAMPLE VERSES
+          {% for i in range(verse_idea_history | length) -%}
+          EXAMPLE_VERSE_IDEA_{{i}}: {{ verse_idea_history[i] }}
+          EXAMPLE_VERSE_OPTIONS_{{i}}: {{ approved_draft_history[i] }}
+          {% endfor -%}
+          {% endif -%}
+          
+          ## VERSE
+          VERSE_IDEA: {{ verse_ideas }}
+          VERSE_OPTIONS:
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              verse:
+                type: string
+                description: >-
+                  A verse which takes in everything you know about the LYRICS_ANALYSIS and VERSE_IDEA
+              verse_title:
+                type: string
+                description: Provide a title which describes the verse created.
+        system_prompt: >
+          As a world-class songwriter, your task is to analyze the provided
+          lyrics snippet based on the given genre and theme and helping an up
+          and coming genre [GENRE] artist who wants to have an edge with their
+          creative songwriting. 
+
+          You have already analysed and deconstructed their current lyrics
+          (LYRICS_ANALYSIS) to understand the song.
+
+          You'll be provided with an idea (VERSE_IDEA) and it's up to you to
+          turn that into a new verse! 
+
+          You must provide 4 different verses using the knowledge you have on
+          the song so far and the VERSE_IDEA, along with a title to each verse.
+
+          Notes:
+            - Using the insights and feedback provided in LYRICS_ANALYSIS, brainstorm ideas for new lyrics that align with the desired direction and vision.
+            - Generate multiple drafts of lyrics, exploring different angles, narratives, and emotional approaches while staying true to the genre and theme.
+            - Experiment with various rhyme schemes, meter, and phrasing to create a diverse set of options.
+            - Incorporate the suggested imagery, metaphors, and symbolism to enhance the lyrical content.
+            - Develop the perspective or point of view expressed in the original lyrics, ensuring consistency and coherence throughout the new drafts.
+            - Iterate on the drafts, refining the language, strengthening the message, and 
+
+          Only respond in JSON format of a list of objects with the following keys:
+            - verse: A complete verse which takes in everything you know about the LYRICS_ANALYSIS and VERSE_IDEA
+            - verse_title: Provide a title which fits the LYRICS_ANALYSIS and which describes the verse created.
+    trigger: generate_draft_verses
+  - trigger: discard
+    source: User_Selection_of_Best_Verse
+    dest: Idea_Generation_and_Draft_Verses
+  - dest: Completed_Verse
+    inputs:
+      - key: genre
+        schema:
+          type: string
+      - key: analysed_data
+        schema:
+          type: string
+      - key: selected_verse
+        schema:
+          type: array
+          items:
+            type: object
+            properties:
+              verse:
+                type: string
+              verse_title:
+                type: string
+        ui_type: definition-list-select
+        ui_params:
+          values: presented_verses.*
+          multiple: false
+          textKeys:
+            - verse
+          titleKey: verse_title
+        description: Select a the verse you want to work on
+      - key: artist_feedback
+        schema:
+          type: string
+        ui_type: textarea
+        description: >-
+          Choose the best and write down anything you want to
+          add/update/improve?
+    source: User_Selection_of_Best_Verse
+    outputs:
+      - key: completed_verse
+        prompt: |
+          LYRICS_ANALYSIS: {{ analysed_data }}
+          VERSE_DRAFT: {{ selected_verse }}
+          {% if artist_feedback != None and artist_feedback != ''%}ARTIST_FEEDBACK: {{ artist_feedback }}{% endif %}
+          VERSE:
+        schema:
+          type: string
+        system_prompt: >
+          You are an expert song writer. You are tasked with working with a user to create an amazing new song. The user is an up and coming {{genre}} artist who wants to have an edge with their creative songwriting.
+
+          You have came up with a verse draft (VERSE_DRAFT) and the user has provided feedback (ARTIST_FEEDBACK). You must take this feedback and generate an even better verse using what you have so far, improved by taking into account the feedback and previous lyrics_analysis (LYRICS_ANALYSIS)
+
+          Only respond in markdown format and you must write only the complete verse.
+      - key: approved_draft_history
+        append:
+          - selected_verse
+      - key: verse_idea_history
+        append:
+          - verse_ideas
+    trigger: Choose Verse
+  - trigger: next_verse
+    source: Completed_Verse
+    dest: Idea_Generation_and_Draft_Verses
+initial_state: User_Input
+initial_memory:
+  approved_draft_history: []
+  verse_idea_history: []
+  songwriting_analysis_guide: |
+    1. Genre Analysis:
+       - Identify the key characteristics, musical elements, and conventions of the genre [Genre Name].
+       - Explain how the provided lyrics align with or deviate from the typical lyrical themes, storytelling techniques, and language used in this genre.
+       - Suggest any subgenres or fusion genres that could influence the track's direction while still fitting within the broader genre.
+    2. Theme Interpretation:
+       - Reflect on the provided theme [Theme] and its emotional depth, cultural relevance, and storytelling potential.
+       - Identify the key concepts, emotions, and ideas within the theme that can be explored through music and lyrics.
+       - Suggest the mood and atmosphere that best suit the theme and how they can be conveyed through the lyrics.
+       - Provide examples of imagery, metaphors, or symbolism that can effectively communicate the theme and create a strong connection with the listener.
+    3. Lyrics Analysis:
+       - Analyze the central message or story conveyed in the provided lyrics snippet.
+       - Assess how well the lyrics align with the given theme and genre, and suggest any improvements or adjustments.
+       - Examine the structure, rhyme scheme, meter, and phrasing of the lyrics, and provide feedback on their effectiveness and potential for creating a memorable and impactful song.
+       - Identify any powerful or memorable lines that can serve as anchors or hooks for the rest of the song.
+       - Suggest ways to further develop or expand upon the perspective or point of view expressed in the lyrics.
+       - Provide recommendations for strengthening the lyrics, such as improving word choice, clarifying the message, or enhancing the emotional impact.
+default_model_config:
+  executor: openai
+  llm_name: gpt-4o
