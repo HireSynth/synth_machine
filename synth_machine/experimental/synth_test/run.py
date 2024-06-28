@@ -21,15 +21,17 @@ def run_test(
     try:
         output_result = synth.memory[test.output]
     except KeyError:
-        raise Exception(
+        raise KeyError(
             f"Output key: {test.output}, doesn't exist in synth memory (keys: {synth.memory.keys()})"
         )
 
     match test.test:
         case TestOptions.prompt:
-            return test_prompt(output_result, test.testcase, llm_config_list)
+            return test_prompt(
+                test.output, output_result, test.testcase, llm_config_list
+            )
         case TestOptions.length:
-            return test_length(output_result, test.testcase)
+            return test_length(test.output, output_result, test.testcase)
         case _:
             raise Exception(f"Test: '{test.test}' is not a valid test option")
 
@@ -48,10 +50,17 @@ def run_testset(synth: Synth, testset: SynthTestSpec) -> SynthTestResponse:
         )
         for output_test in transition.outputs:
             output_response = run_test(synth, output_test, testset.llm_config_list)  # type: ignore
+
             if output_response.success:
                 transition_response.num_success += 1
+                print(".", end="")
+            elif output_response.test_error:
+                transition_response.num_test_errors += 1
+                print("E", end="")
             else:
                 transition_response.num_failure += 1
+                print("F", end="")
+
             transition_response.outputs.append(output_response)
 
         transition_response.passed = transition_response.num_failure == 0
@@ -60,4 +69,12 @@ def run_testset(synth: Synth, testset: SynthTestSpec) -> SynthTestResponse:
         testset_results.transitions.append(transition_response)
 
     testset_results.passed = testset_results.num_failure == 0
+
+    print("\nSynth Tests Complete")
+    print(
+        f"Tests Found: {testset_results.num_success + testset_results.num_failure + testset_results.num_test_errors}"
+    )
+    print(f"Tests Succeed: {testset_results.num_success}")
+    print(f"Tests Failed: {testset_results.num_failure}")
+    print(f"Test Errors: {testset_results.num_test_errors}")
     return testset_results

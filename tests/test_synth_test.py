@@ -70,8 +70,11 @@ To align the lyrics with the genre, the artist could consider:
                     outputs=[
                         OutputTestResponse(
                             test="prompt",
+                            rule="Output test_output, Rule: There must be clear sections labelled 'Genre Analysis', 'Theme Interpretation' and 'Lyrics Analysis'",
                             success=True,
                             score=2.33,
+                            test_error=False,
+                            message=None,
                             results=[
                                 IndividualPromptTestOutput(
                                     llm_name="Qwen/Qwen2-72B-Instruct",
@@ -91,7 +94,13 @@ To align the lyrics with the genre, the artist could consider:
                             ],
                         ),
                         OutputTestResponse(
-                            test="length", success=False, score=1213.0, results=None
+                            test="length",
+                            success=False,
+                            score=1213.0,
+                            results=None,
+                            rule="Output: test_output, Length must be gt 2500",
+                            test_error=False,
+                            message=None,
                         ),
                     ],
                     passed=False,

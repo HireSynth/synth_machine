@@ -71,8 +71,11 @@ class IndividualPromptTestOutput(BaseModel):
 
 class OutputTestResponse(BaseModel):
     test: TestOptions
+    rule: str
     success: bool
     score: float
+    test_error: bool = False
+    message: Optional[str] = None
     results: Optional[List[IndividualPromptTestOutput]] = None
 
 
@@ -82,6 +85,7 @@ class TransitionTestResponse(BaseModel):
     passed: bool
     num_success: int
     num_failure: int
+    num_test_errors: int = 0
 
 
 class SynthTestResponse(BaseModel):
@@ -89,3 +93,4 @@ class SynthTestResponse(BaseModel):
     passed: bool
     num_success: int
     num_failure: int
+    num_test_errors: int = 0

@@ -44,8 +44,12 @@ def remove_after_last_char(s, char):
 
 
 def test_prompt(
-    test_response: str, testcase: PromptTest, llm_config_list: List[ModelConfig]
+    output: str,
+    test_response: str,
+    testcase: PromptTest,
+    llm_config_list: List[ModelConfig],
 ) -> OutputTestResponse:
+    rule = f"Output {output}, Rule: {testcase.rule}"
     results = []
     full_score = 0
     for llm_config in llm_config_list:
@@ -80,26 +84,41 @@ def test_prompt(
         results.append(prompt_result)
 
     if len(results) == 0:
-        raise Exception(
+        logging.warning(
             "All models failed validation, consider reviewing models and/or prompt"
+        )
+        return OutputTestResponse(
+            test="prompt",
+            rule=rule,
+            success=False,
+            test_error=True,
+            message="All models failed validation, consider reviewing models and/or prompt",
         )
     return OutputTestResponse(
         test="prompt",
+        rule=rule,
         success=full_score >= (testcase.test_value * len(results)),
         score=round(float(full_score) / len(results), 2),
         results=results,
     )
 
 
-def test_length(value: str | list, config: LengthTest) -> OutputTestResponse:
-    length = len(value)
+def test_length(
+    output: str, value: str | list, config: LengthTest
+) -> OutputTestResponse:
+    rule = f"Output: {output}, Length must be {config.operator} {config.test_value}"
     match config.operator:
         case LengthOperators.equals:
-            test_success = config.test_value == length
+            test_success = config.test_value == len(value)
         case LengthOperators.greater_than | LengthOperators.gt:
             test_success = config.test_value < len(value)
         case LengthOperators.less_than | LengthOperators.lt:
             test_success = config.test_value > len(value)
         case _:
-            raise Exception(f"No length test for: {config.operator}")
-    return OutputTestResponse(test="length", success=test_success, score=length)
+            logging.warning(f"No length test for: {config.operator}")
+            return OutputTestResponse(
+                test="length", rule=rule, success=False, score=-1, test_error=True
+            )
+    return OutputTestResponse(
+        test="length", rule=rule, success=test_success, score=len(value)
+    )
