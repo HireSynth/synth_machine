@@ -33,6 +33,7 @@ class LengthTest(BaseModel):
 class PromptTest(BaseModel):
     rule: str
     test_value: int = 2
+    additional_variables: List[str] = []
 
 
 class TestOptions(StrEnum):  # type: ignore
@@ -86,6 +87,7 @@ class TransitionTestResponse(BaseModel):
     num_success: int
     num_failure: int
     num_test_errors: int = 0
+    failure_rules: List[str] = []
 
 
 class SynthTestResponse(BaseModel):
@@ -94,3 +96,4 @@ class SynthTestResponse(BaseModel):
     num_success: int
     num_failure: int
     num_test_errors: int = 0
+    failure_rules: List[str] = []

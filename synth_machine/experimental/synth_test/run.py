@@ -28,7 +28,7 @@ def run_test(
     match test.test:
         case TestOptions.prompt:
             return test_prompt(
-                test.output, output_result, test.testcase, llm_config_list
+                test.output, output_result, test.testcase, llm_config_list, synth.memory
             )
         case TestOptions.length:
             return test_length(test.output, output_result, test.testcase)
@@ -59,6 +59,7 @@ def run_testset(synth: Synth, testset: SynthTestSpec) -> SynthTestResponse:
                 print("E", end="")
             else:
                 transition_response.num_failure += 1
+                transition_response.failure_rules.append(output_response.rule)
                 print("F", end="")
 
             transition_response.outputs.append(output_response)
@@ -67,6 +68,7 @@ def run_testset(synth: Synth, testset: SynthTestSpec) -> SynthTestResponse:
         testset_results.num_success += transition_response.num_success
         testset_results.num_failure += transition_response.num_failure
         testset_results.transitions.append(transition_response)
+        testset_results.failure_rules += transition_response.failure_rules
 
     testset_results.passed = testset_results.num_failure == 0
 

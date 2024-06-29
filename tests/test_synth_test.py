@@ -19,13 +19,22 @@ from unittest.mock import patch
 def mock_generate(prompt, system_prompt, llm_config: ModelConfig):
     match llm_config.llm_name:
         case "Qwen/Qwen2-72B-Instruct":
-            return """Sure! Here is the result {"score": "green", "explanation": "The content is structured into three distinct sections as required by the rule: 'Genre Analysis', 'Theme Interpretation', and 'Lyrics Analysis'. Each section is clearly labeled and provides a detailed analysis relevant to the topic. The rule is fully adhered to, and the content is well-organized."}"""
+            return (
+                """Sure! Here is the result {"score": "green", "explanation": "The content is structured into three distinct sections as required by the rule: 'Genre Analysis', 'Theme Interpretation', and 'Lyrics Analysis'. Each section is clearly labeled and provides a detailed analysis relevant to the topic. The rule is fully adhered to, and the content is well-organized."}""",
+                False,
+            )
         case "meta-llama/Llama-3-8b-chat-hf":
-            return """{"score": "green", "explanation": "The provided content meets the rule by clearly labeling and separating the required sections: 'Genre Analysis', 'Theme Interpretation', and 'Lyrics Analysis'. Each section provides a detailed and informative analysis, demonstrating a thorough understanding of the topic. The content is well-structured, and the language is clear and concise."}"""
+            return (
+                """{"score": "green", "explanation": "The provided content meets the rule by clearly labeling and separating the required sections: 'Genre Analysis', 'Theme Interpretation', and 'Lyrics Analysis'. Each section provides a detailed and informative analysis, demonstrating a thorough understanding of the topic. The content is well-structured, and the language is clear and concise."}""",
+                False,
+            )
         case "meta-llama/Llama-3-70b-chat-hf":
-            return """{"score": "yellow", "explanation": "The provided content includes clear sections labeled 'Genre Analysis', 'Theme Interpretation', and 'Lyrics Analysis'. Each section provides a detailed and well-structured analysis of the given topic, demonstrating a strong understanding of the subject matter and the ability to communicate complex ideas effectively."}\nResult: {"""
+            return (
+                """{"score": "yellow", "explanation": "The provided content includes clear sections labeled 'Genre Analysis', 'Theme Interpretation', and 'Lyrics Analysis'. Each section provides a detailed and well-structured analysis of the given topic, demonstrating a strong understanding of the subject matter and the ability to communicate complex ideas effectively."}\nResult: {""",
+                False,
+            )
         case _:
-            return "Broken response"
+            return "Broken response", True
 
 
 class TestSynthTest(TestCase):
@@ -106,11 +115,13 @@ To align the lyrics with the genre, the artist could consider:
                     passed=False,
                     num_success=1,
                     num_failure=1,
+                    failure_rules=["Output: test_output, Length must be gt 2500"],
                 )
             ],
             passed=False,
             num_success=1,
             num_failure=1,
+            failure_rules=["Output: test_output, Length must be gt 2500"],
         )
         testset_spec = {
             "transitions": [

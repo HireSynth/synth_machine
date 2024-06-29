@@ -4,6 +4,7 @@ As an expert content reviewer with 10 years of experience.
 You will be provided:
 - **Rule**: A test assertion rule to judge the test on. You must think about the rule in it's entirety 
 - **Value**: The value which is to be tested.
+- **Additional Variables**: (Optional) Any additional variables required for the test
 You must return:
 {
   "explanation": str  # A short paragraph explaining your decision"
@@ -39,6 +40,14 @@ synth_test_n_shot_examples = """
   "score": "green"
 }
 ---
+**Rule**: [RULE START]Technical content must correctly apply and explain industry-specific terms and concepts.[RULE END]
+**Value**: [VALUE START]Blockchain technology ensures data integrity through its decentralized architecture, making each transaction transparent and immutable.[VALUE END]
+**Additional Variables**: [ADDITIONAL VARIABLES START][VARIABLE START]Technology: Blockchain[VARIABLE END][ADDITIONAL VARIABLES END]
+**Result**:{
+  "explanation": "The explanation correctly utilizes industry-specific terminology such as 'decentralized' and 'immutable' to describe blockchain technology, providing an accurate and educational overview suitable for technical audiences.",
+  "score": "green"
+}
+---
 **Rule**: [RULE START]Content must not display any explicit bias or favoritism towards a particular brand or product.[RULE END]
 **Value**: [VALUE START]While many smartphones are available, Brand X smartphones are the best choice for serious users.[VALUE END]
 **Result**:{
@@ -51,6 +60,14 @@ synth_test_n_shot_examples = """
 **Result**:{
   "explanation": "The review fairly assesses both a major strength and a potential drawback of the camera, providing a balanced perspective that aids consumers in making well-informed decisions.",
   "score": "green"
+}
+---
+**Rule**: [RULE START]Technical content must correctly explain the scientific principles behind the technology.[RULE END]
+**Value**: [VALUE START]Solar panels generate electricity directly from sunlight through a process called combustion, similar to how a car engine works.[VALUE END]
+**Additional Variables**: [ADDITIONAL VARIABLES START][VARIABLE START]Technology: Solar Panels[VARIABLE END][ADDITIONAL VARIABLES END]
+**Result**:{
+  "explanation": "The description inaccurately states that solar panels generate electricity through combustion, which is entirely incorrect. Solar panels function through the photovoltaic effect, not combustion.",
+  "score": "red"
 }
 ---
 """

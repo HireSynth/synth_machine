@@ -11,26 +11,31 @@ from synth_machine.machine_config import ModelConfig
 from typing import List
 import logging
 import json
-import openai
+from together import Together
 import os
 
 
 def generate(prompt, system_prompt, llm_config: ModelConfig):
-    togetherai_client = openai.OpenAI(
+    client = Together(
         api_key=os.environ.get("TOGETHER_API_KEY"),
-        base_url="https://api.together.xyz/v1",
     )
-    response = togetherai_client.chat.completions.create(
-        model=llm_config.llm_name,
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": prompt},
-        ],
-        temperature=llm_config.temperature,
-        max_tokens=llm_config.max_tokens,
-        stop=["---", "**Rule**", "assistant"],
-    )
-    return response.choices[0].message.content
+    try:
+        response = client.chat.completions.create(
+            model=llm_config.llm_name,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=llm_config.temperature,
+            max_tokens=llm_config.max_tokens,
+            stop=["---", "**Rule**", "assistant"],
+        )
+        return response.choices[0].message.content, False
+    except NameError as err:
+        logging.warning(
+            f"Internal server error with model: {llm_config.llm_name}, error: {err}"
+        )
+        return "", True
 
 
 def remove_before_char(s, char):
@@ -48,16 +53,37 @@ def test_prompt(
     test_response: str,
     testcase: PromptTest,
     llm_config_list: List[ModelConfig],
+    memory: dict,
 ) -> OutputTestResponse:
     rule = f"Output {output}, Rule: {testcase.rule}"
     results = []
     full_score = 0
+
+    additional_variables = (
+        "**\nAdditional Variables**: [ADDITIONAL VARIABLES START]"
+        + "\n".join(
+            [
+                f"[VARIABLE START]{variable.upper()}: {memory[variable]}[VARIABLE END]"
+                for variable in testcase.additional_variables
+            ]
+        )
+        + "[ADDITIONAL VARIABLES END]"
+        if testcase.additional_variables
+        else ""
+    )
+    complete_prompt = f"{synth_test_n_shot_examples}[**Rule**: [RULE START]]{testcase.rule}[RULE END]{additional_variables}\n***Value:** [VALUE START]{test_response}[VALUE END]\n**Result**:"
+
     for llm_config in llm_config_list:
-        prompt_response = generate(
-            prompt=f"{synth_test_n_shot_examples}[**Rule**: [RULE START]]{testcase.rule}[RULE END]\n**Value:** [VALUE START]{test_response}[VALUE END]\n**Result**:",
+        prompt_response, is_err = generate(
+            prompt=complete_prompt,
             system_prompt=synth_test_system_prompt,
             llm_config=llm_config,
         )
+        if is_err:
+            logging.warning(
+                f"Model: {llm_config.llm_name} failed, removing from selection"
+            )
+            continue
         # Small models sometimes don't follow prompt formats exactly
         prompt_cleaned = remove_after_last_char(
             remove_before_char(prompt_response, "{"), "}"
