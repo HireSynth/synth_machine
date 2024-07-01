@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "synth_machine"
-version = "0.5.1"
+version = "0.6.0"
 description = ""
 authors = [
   "David <david@hiresynth.ai>",
@@ -24,6 +24,8 @@ anthropic = {version="^0.30.0", optional=true}
 openai = {version="1.35.7", optional=true}
 aenum = "^3.1.15"
 hiresynth-object-store-python = "^0.1.4"
+magika = "^0.5.1"
+httpx = "^0.27.0"
 together = {version="^1.2.1", optional=true}
 
 [tool.poetry.extras]
