@@ -1,0 +1,231 @@
+states:
+  - name: company_information
+    interface: []
+  - name: topic_suggestions
+    interface:
+      - key: hashtag_suggestions
+        componentName: DefinitionList
+  - name: post_outline
+    interface:
+      - key: post_outline
+        componentName: Markdown
+  - name: post_content
+    interface:
+      - key: post_content
+        componentName: Markdown
+  - name: intro
+    interface: []
+  - name: website_processed
+    interface: []
+transitions:
+  - dest: topic_suggestions
+    inputs:
+      - key: company_name
+        schema:
+          type: string
+        ui_type: text-field
+        description: What does your company produce or do?
+      - key: company_description
+        ui_type: textarea
+    source: company_information
+    outputs:
+      - key: topic_suggestions
+        prompt: |
+          Company Name: {{ company_name }}
+
+          Description: {{ company_description }}
+        schema:
+          type: array
+          items:
+            type: object
+            required:
+              - title
+              - summary
+            properties:
+              title:
+                type: string
+                description: Headline for article
+              summary:
+                type: string
+                description: Summary for topic and content of article
+          maxItems: 5
+          minItems: 5
+        system_prompt: >
+          You are an expert copy writer specialising in social media. Create 5
+          ideas for LinkedIn posts for the Company (the user will provide
+          details of the company).
+    trigger: create_ideas
+  - dest: topic_suggestions
+    inputs:
+      - key: company_name
+        schema:
+          type: string
+        ui_type: text-field
+        description: What does your company produce or do?
+      - key: company_description
+        ui_type: textarea
+    source: topic_suggestions
+    outputs:
+      - key: topic_suggestions
+        prompt: |
+          Company Name: {{ company_name }}
+
+          Description: {{ company_description }}
+        schema:
+          type: array
+          items:
+            type: object
+            required:
+              - title
+              - summary
+            properties:
+              title:
+                type: string
+                description: Headline for article
+              summary:
+                type: string
+                description: Summary for topic and content of article
+          maxItems: 5
+          minItems: 5
+        system_prompt: >
+          You are an expert copy writer specialising in social media. Create 5
+          ideas for LinkedIn posts for the Company (the user will provide
+          details of the company).
+      - key: hashtag_suggestions
+        prompt: |
+          Company Name: {{ company_name }}
+
+          Description: {{ company_description }}
+        schema:
+          type: array
+          items:
+            type: object
+            required:
+              - hashtag
+            properties:
+              hashtag:
+                type: string
+                description: Hashtag (including hash)
+          maxItems: 10
+          minItems: 10
+        system_prompt: >
+          You are an expert copy writer specialising in social media. Create 10
+          hashtag ideas for LinkedIn posts for the Company (the user will
+          provide details of the company).
+      - key: hashtag_suggestions
+    trigger: regenerate_ideas
+  - dest: company_information
+    source: topic_suggestions
+    trigger: reset
+  - dest: post_outline
+    after: content_from_outline
+    inputs:
+      - key: topic
+        schema:
+          type: array
+          items:
+            type: object
+            required:
+              - title
+              - summary
+            properties:
+              title:
+                type: string
+                description: Headline for article
+              summary:
+                type: string
+                description: Summary for topic and content of article
+          maxItems: 5
+          minItems: 5
+        ui_type: definition-list-select
+        ui_params:
+          values: topic_suggestions.*
+          multiple: false
+          textKeys:
+            - summary
+          titleKey: title
+        description: Select a topic from the list of suggestions
+    source: topic_suggestions
+    default: true
+    outputs:
+      - key: post_outline
+        prompt: |
+          {{ topic }}
+        schema:
+          type: string
+        system_prompt: >
+          Given the user's provided topic details, generate an outline for the
+          blog post. Respond in markdown.
+    trigger: select_topic
+  - dest: post_content
+    inputs:
+      - key: post_outline
+    source: post_outline
+    outputs:
+      - key: post_content
+        prompt: |
+          {{ post_outline }}
+        schema:
+          type: string
+        system_prompt: >
+          Given the user's provided post outline, create the full fleshed-out
+          content for the blog post. Replace any placeholder titles, and expand
+          bullet points into paragraphs. Focus only on well written and
+          informative and interesting content. Respond in markdown.
+    trigger: content_from_outline
+  - dest: topic_suggestions
+    source: post_content
+    trigger: discard
+  - dest: website_processed
+    after: extract_company_information
+    inputs:
+      - key: company_url
+        schema:
+          type: string
+        ui_type: textarea
+        description: URL of your company's website
+    source: intro
+    default: true
+    outputs:
+      - key: company_website_markdown
+        tool: scrape
+        route: /api/scrape
+        input_name_map:
+          url: "{{company_url}}"
+    trigger: autofill_company_info
+  - dest: company_information
+    inputs:
+      - key: company_website_markdown
+    source: website_processed
+    default: true
+    outputs:
+      - key: company_information
+        prompt: "{{company_website_markdown}}"
+        schema:
+          type: object
+          properties:
+            company_name:
+              type: string
+              description: the company's trading name
+            company_description:
+              type: string
+              description: What the company trades, what products it sells, what makes them
+                unique if applicable, any extra background information in
+                summary form.
+        system_prompt: The user will provide you with markdown content of a companies
+          website, find the company's name and what they field of business,
+          products are.
+      - jq: .company_information.company_name
+        key: company_name
+      - jq: .company_information.company_description
+        key: company_description
+    trigger: extract_company_information
+  - dest: intro
+    source: company_information
+    trigger: reset_to_url
+initial_state: intro
+default_model_config:
+  executor: openai
+  llm_name: gpt-4o
+  max_tokens: 4000
+  temperature: 0.2

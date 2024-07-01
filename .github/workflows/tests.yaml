@@ -24,7 +24,7 @@ jobs:
     - name: Install dependencies and run tests
       run: |
         pip install -U pip poetry
-        poetry install --sync
+        poetry install --sync -E togetherai
         poetry run coverage run -m unittest discover
         poetry run coverage report --format=markdown > report.txt
     - name: Report Coverage
