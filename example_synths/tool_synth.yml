@@ -2,11 +2,8 @@ states:
   - name: Start
   - name: tools_as_apis
   - name: mixing_tools_with_llms
-  - name: file_output_tools
+  - name: idea_spoken
 initial_state: Start
-tools:
-  - name: hello_world
-  - name: TTS
 transitions:
   - trigger: say_hello
     source: Start
@@ -18,12 +15,15 @@ transitions:
         schema:
           type: string
     outputs:
-      - key: hello_animal
+      - key: hello_animal_response
         tool: hello_world
         route: /api/hello-world
         input_name_map:
           text: animal
-        return_key: message
+      - key: hello_animal
+        jq: .hello_animal_response.message
+        schema:
+          type: string
   - trigger: say_hello_2
     source: tools_as_apis
     dest: tools_as_apis
@@ -40,6 +40,7 @@ transitions:
           text: animal
         return_key: message
   - trigger: create_ideas
+    default: true
     source: tools_as_apis
     dest: mixing_tools_with_llms
     inputs:
@@ -76,7 +77,7 @@ transitions:
           type: string
     outputs:
       - key: spoken_idea
-        tool: TTS
+        tool: text_to_speech
         route: /api/text-to-speech
         input_name_map:
           input: animal_idea
