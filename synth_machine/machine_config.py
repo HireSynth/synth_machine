@@ -13,6 +13,7 @@ class ModelConfig(BaseModel):
     stop: Optional[List[str]] = None
     tool_use: Optional[bool] = None
     tool_options: Optional[List[dict]] = None
+    image_url: Optional[str] = None
 
 
 default_model_config = ModelConfig(
