@@ -471,6 +471,7 @@ class Synth(BaseCost):
         post_process_tasks,
         loop=False,
     ):
+        logging.info(f"Starting output: {transition.trigger}.{output_key}")
         async for event in self.run_task(
             inputs=inputs,
             transition=transition,
@@ -492,6 +493,7 @@ class Synth(BaseCost):
                         async for post_process_event in post_process:
                             yield post_process_event
             yield event
+        logging.info(f"Complete output: {transition.trigger}.{output_key}")
 
     async def execute_for_trigger(self, initial_trigger):
         transition = self._transition_for_trigger(initial_trigger)
@@ -618,7 +620,7 @@ class Synth(BaseCost):
 
         async for value in self.streaming_trigger(trigger, params=params):
             logging.debug(value)
-            if value[0] == FailureState.FAILED:
+            if value and value[0] == FailureState.FAILED:
                 logging.error(f"Failure: {value}")
 
         return {output: self.memory[output] for output in transition_outputs}
