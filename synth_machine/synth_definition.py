@@ -2,6 +2,7 @@ from pydantic import BaseModel, Field, model_validator
 from typing import Optional, List
 from synth_machine.machine_config import ModelConfig, default_model_config
 from synth_machine.rag import RAGConfig
+from synth_machine.synth_parser import ParserOptions
 
 
 class Loop(BaseModel):
@@ -33,6 +34,7 @@ class Output(BaseModel):
     input_name_map: Optional[dict] = None
     key: str
     config: Optional[ModelConfig] = Field(alias="model_config", default=ModelConfig())
+    parser: ParserOptions = ParserOptions.JSON  # type: ignore
     rag_config: Optional[RAGConfig] = None
     prompt: Optional[str] = None
     reset: Optional[bool] = None

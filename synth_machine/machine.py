@@ -4,13 +4,12 @@ import itertools
 import uuid
 from json.decoder import JSONDecodeError
 from typing import List, Optional
-
 from jsonschema import validate  # type: ignore
 from jsonschema.exceptions import ValidationError  # type: ignore
 from object_store import ObjectStore
-from partial_json_parser import loads, OBJ
 from transitions import Machine
 
+from synth_machine.synth_parser import SynthParser, ParserOptions
 from synth_machine.operator_setup import (
     prompt_setup,
     prompt_for_transition,
@@ -25,6 +24,12 @@ from synth_machine.runners import (
 )
 from synth_machine.cost import BaseCost
 from synth_machine.tools import Tool
+from synth_machine.operation_definitions import (
+    YieldTasks,
+    FailureState,
+    PostProcessTasks,
+    OperationPriority,
+)
 from synth_machine.synth_definition import (
     Output,
     Input,
@@ -32,12 +37,6 @@ from synth_machine.synth_definition import (
     synth_definition_setup,
 )
 from synth_machine.rag import RAG
-
-try:
-    from enum import StrEnum
-except ImportError:
-    # For python versions <3.11, using aenum for backward compatibility
-    from aenum import StrEnum
 
 
 class Model:
@@ -48,36 +47,7 @@ class TransitionError(Exception):
     pass
 
 
-class YieldTasks(StrEnum):  # type: ignore
-    CHUNK = "CHUNK"
-    MODEL_CONFIG = "MODEL_CONFIG"
-    SET_MEMORY = "SET_MEMORY"
-    SET_ACTIVE_OUTPUT = "SET_ACTIVE_OUTPUT"
-
-
-class FailureState(StrEnum):  # type: ignore
-    FAILED = "FAILED"
-    LOOP_FAILURE = "LOOP_FAILED"
-    OUTPUT_VALIDATION_FAILED = "OUTPUT_VALIDATION_FAILED"
-    NOT_IMPLEMENTED = "NOT IMPLEMENTED"
-
-
-class PostProcessTasks(StrEnum):  # type: ignore
-    JQ = "jq"
-
-
-class OperationPriority(StrEnum):  # type: ignore
-    APPEND = "append"
-    INTERLEAVE = "interleave"
-    JINJA = "jinja"
-    PROMPT = "prompt"
-    RESET = "reset"
-    UDF = "udf"
-    TOOL = "tool"
-    RAG = "rag"
-
-
-class Synth(BaseCost):
+class Synth(BaseCost, SynthParser):
     JSONSCHEMA_PRELUDE = {"$schema": "http://json-schema.org/draft-04/schema#"}
 
     def __init__(
@@ -91,6 +61,7 @@ class Synth(BaseCost):
         rag_runner: Optional[RAG] = None,
         user_defined_functions: dict = {},
     ) -> None:
+        super().__init__()
         self.config = synth_definition_setup(config)
         self.user = user
         self.session_id = session_id
@@ -159,7 +130,10 @@ class Synth(BaseCost):
         if new_buffer != self.buffer.get(output_key, ""):
             self.buffer[output_key] = new_buffer
             try:
-                result = self.memory | loads(str(self.buffer[output_key]), OBJ).output
+                result = self.memory | self.parse.get(
+                    output_definition.parser,
+                    ParserOptions.JSON,
+                )(str(self.buffer[output_key]))
             except Exception:
                 result = self.memory
         else:
@@ -396,8 +370,12 @@ class Synth(BaseCost):
                         predicted_json = predicted
                     else:
                         try:
+                            parsed_response = self.parse.get(
+                                output_definition.parser,
+                                ParserOptions.JSON,
+                            )(predicted)
                             predicted_json = llm_config.executor.post_process(
-                                json.loads(predicted.strip())
+                                parsed_response
                             )  # type: ignore
                             validate(
                                 instance=predicted_json,

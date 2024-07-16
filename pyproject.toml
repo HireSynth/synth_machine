@@ -27,6 +27,7 @@ hiresynth-object-store-python = "^0.1.4"
 magika = "^0.5.1"
 httpx = "^0.27.0"
 together = {version="^1.2.1", optional=true}
+xmltodict = "^0.13.0"
 
 [tool.poetry.extras]
 openai = ["openai"]
