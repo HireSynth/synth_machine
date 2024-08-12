@@ -37,7 +37,7 @@ togetherai = ["openai", "together"]
 [tool.poetry.group.dev.dependencies]
 commitizen = "^3.26.0"
 coverage = "^7.5.1"
-deptry = "^0.18.0"
+deptry = "^0.19.1"
 pre-commit = "^3.6.2"
 pyright = "^1.1.326"
 pyyaml = "^6.0.1"
