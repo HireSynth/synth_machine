@@ -1,0 +1,566 @@
+states:
+  - name: Describe_World_Characters
+    interface:
+      - key: starting_scene
+        componentName: Markdown
+  - name: Generate_User_and_Antagonist_Images
+    interface:
+      - key: user_detailed
+        componentName: Markdown
+      - key: world_detailed
+        componentName: Markdown
+      - key: antagonist_detailed
+        componentName: Markdown
+  - name: Game_Engine
+  - name: Game_Engine_Decision
+  - name: Game_Continue
+    interface:
+      - key: scene_image
+        componentName: RenderImage
+      - key: scene
+        componentName: Markdown
+  - name: Game_Complete_Success
+    interface:
+      - key: success_message
+        componentName: Markdown
+      - key: success_image
+        componentName: Markdown
+      - key: success_scene
+        componentName: Markdown
+  - name: Game_Complete_Failure
+    interface:
+      - key: failure_message
+        componentName: Markdown
+      - key: failure_image
+        componentName: RenderImage
+      - key: failure_scene
+        componentName: Markdown
+transitions:
+  - dest: Generate_User_and_Antagonist_Images
+    inputs:
+      - key: default_system_prompt
+        schema:
+          type: string
+      - key: hero
+        schema:
+          type: string
+        ui_type: textarea
+        examples:
+          - a cyberpunk warrior venturing through the wasteland
+          - a fairy chef who dreams of eating the fabled palace marshmallows
+          - a student who just wants a normal life
+        description: Describe yourself
+      - key: world
+        schema:
+          type: string
+        ui_type: textarea
+        examples:
+          - post apocalyptic wasteland
+          - fairy palace filled with rainbows and marshmallows
+          - dystopian classroom in the year 1984
+        description: Describe the world
+      - key: villain
+        schema:
+          type: string
+        ui_type: textarea
+        examples:
+          - a giant mutant rat who leads an army of radiation rats
+          - palace butler who stops anyone from eating the marshmallows
+          - evil headmaster who forces the students to do manual labor to "pay"
+            for their education
+        description: Who is the villian of the story?
+    source: Describe_World_Characters
+    outputs:
+      - key: user_detailed
+        prompt: |
+          ## PROTAGONIST_BRIEF
+          {{ hero }}
+          ## PROTAGONIST_DETAILED
+        schema:
+          type: string
+        system_prompt: >
+          {{ default_system_prompt }} You will be given a brief description
+          (PROTAGONIST_BRIEF) of your character and you will need to describe
+          and elaborate their appearance (PROTAGONIST_DETAILED). Respond with a
+          maximum of 5 sentences.
+      - key: world_detailed
+        prompt: |
+          ## Protagonist
+          {{ hero }}
+          ## Antagonist
+          {{ villain }}
+          ## WORLD_BRIEF
+          {{ world }}
+          ## WORLD_DETAILED
+        schema:
+          type: string
+        system_prompt: >
+          {{ default_system_prompt }} You will be given a brief description of
+          the world, including the protagonist and antagonist of the story.  You
+          are tasked with describing the world and painting a picture of the
+          environment. Do not mention the protagonist or antagonist in this
+          description. Respond with a maximum of 5 sentences.
+      - key: antagonist_detailed
+        prompt: |
+          ## ANTAGONIST_BRIEF
+          {{ villain }}
+          ## ANTAGONIST_DETAILED
+        schema:
+          type: string
+        system_prompt: >
+          {{ default_system_prompt }} You will be given a brief description
+          (ANTAGONIST_BRIEF) of your character and you will need to describe and
+          elaborate their appearance (ANTAGONIST_DETAILED). Respond with a
+          maximum of 5 sentences.
+    trigger: generate_game
+  - dest: Game_Continue
+    inputs:
+      - key: user_detailed
+        schema:
+          type: string
+      - key: world_detailed
+        schema:
+          type: string
+      - key: antagonist_detailed
+        schema:
+          type: string
+      - key: default_system_prompt
+        schema:
+          type: string
+      - key: scene
+    source: Generate_User_and_Antagonist_Images
+    outputs:
+      - key: scene
+        prompt: |
+          ## Important Details
+          - World : {{ world_detailed }}
+          - Protagonist : {{ user_detailed }}
+          - Major Antagonist : {{ antagonist_detailed }}
+
+          ## Concise Starting Scene & First Decision
+          Scene: 
+        schema:
+          type: string
+        system_prompt: >
+          {{ default_system_prompt }}
+
+          You now must provide an initial starting scene and a decision for the
+          protagonist to make.
+
+          The decision will lead to a consequence and the story will continue
+          from there.
+
+          Each decision a user can make needs to be in bold using markdown
+          notation.
+
+          Only respond in first person, present tense and with a maximum 3
+          sentences.
+      - key: scene_image
+        tool: text_to_image
+        route: /api/text-to-image
+        input_name_map:
+          model: lightning_xl
+          prompt: |
+            {{scene}}
+          provider: fal
+    trigger: start_game
+  - dest: Game_Complete_Success
+    inputs:
+      - key: chat_history
+        schema:
+          type: array
+          items:
+            type: string
+      - key: user_history
+        schema:
+          type: array
+          items:
+            type: string
+      - key: scene_history
+        schema:
+          type: array
+          items:
+            type: string
+      - key: user_detailed
+        schema:
+          type: string
+      - key: world_detailed
+        schema:
+          type: string
+      - key: antagonist_detailed
+        schema:
+          type: string
+      - key: consequence_history
+        schema:
+          type: array
+          items:
+            type: string
+      - key: default_system_prompt
+        schema:
+          type: string
+      - key: user_action_consequence
+        schema:
+          type: object
+          properties:
+            action:
+              type: string
+            consequence:
+              type: string
+      - key: success_scene
+    source: Game_Engine_Decision
+    outputs:
+      - key: success_scene
+        prompt: |
+          ## Important Details
+          - World : {{ world_detailed }}
+          - Protagonist : {{ user_detailed }}
+          - Major Antagonist : {{ antagonist_detailed }}
+
+          {% if scene_history | length != 0 -%}
+          ## Game Up until now:
+          {% for i in range(scene_history | length) -%}
+          Scene: {{ scene_history[i] }}
+          User Decision: {{ user_history[i] }}
+          Consequence: {{ consequence_history[i].consequence }}
+          ---
+          {% endfor -%}
+          {% endif -%}
+
+          ## Game End Success
+          Scene:
+        schema:
+          type: string
+        system_prompt: >
+          {{ default_system_prompt }}
+
+          The protagonist has succeeded in completing the game! You must
+          describe the defeat of the antagonist, through the eyes of the
+          protagonist.
+
+          Only respond in first person, present tense and a single concise
+          paragraph.
+      - key: success_image
+        tool: text_to_image
+        route: /api/text-to-image
+        input_name_map:
+          model: lightning_xl
+          prompt: |
+            {{success_scene}}
+          provider: fal
+    trigger: success
+  - dest: Game_Complete_Failure
+    inputs:
+      - key: chat_history
+        schema:
+          type: array
+          items:
+            type: string
+      - key: user_history
+        schema:
+          type: array
+          items:
+            type: string
+      - key: scene_history
+        schema:
+          type: array
+          items:
+            type: string
+      - key: user_detailed
+        schema:
+          type: string
+      - key: world_detailed
+        schema:
+          type: string
+      - key: antagonist_detailed
+        schema:
+          type: string
+      - key: consequence_history
+        schema:
+          type: array
+          items:
+            type: string
+      - key: default_system_prompt
+        schema:
+          type: string
+      - key: failure_scene
+    source: Game_Engine_Decision
+    outputs:
+      - key: failure_scene
+        prompt: |
+          ## Important Details
+          - World : {{ world_detailed }}
+          - Protagonist : {{ user_detailed }}
+          - Major Antagonist : {{ antagonist_detailed }}
+
+          {% if scene_history | length != 0 -%}
+          ## Game Up until now:
+          {% for i in range(scene_history | length) -%}
+          Scene: {{ scene_history[i] }}
+          User Decision: {{ user_history[i] }}
+          Consequence: {{ consequence_history[i].consequence }}
+          ---
+          {% endfor -%}
+          {% endif -%}
+
+          ## Game End Failure
+          Final failure scene:
+        schema:
+          type: string
+        system_prompt: >
+          {{ default_system_prompt }}
+
+          The antagonist has defeated the protagonist in a swift, brutal and
+          final manner. Describe the defeat through the eyes of the protagonist.
+
+          Only respond in first person, present tense and a single concise
+          paragraph.
+      - key: failure_image
+        tool: text_to_image
+        route: /api/text-to-image
+        input_name_map:
+          model: lightning_xl
+          prompt: |
+            {{failure_scene}}
+          provider: fal
+    trigger: failure
+  - dest: Game_Continue
+    inputs:
+      - key: chat_history
+        schema:
+          type: array
+          items:
+            type: string
+      - key: user_history
+        schema:
+          type: array
+          items:
+            type: string
+      - key: scene_history
+        schema:
+          type: array
+          items:
+            type: string
+      - key: user_detailed
+        schema:
+          type: string
+      - key: world_detailed
+        schema:
+          type: string
+      - key: antagonist_detailed
+        schema:
+          type: string
+      - key: consequence_history
+        schema:
+          type: array
+          items:
+            type: string
+      - key: default_system_prompt
+        schema:
+          type: string
+      - key: user_action_consequence
+        schema:
+          type: object
+          properties:
+            action:
+              type: string
+            consequence:
+              type: string
+      - key: scene
+    source: Game_Engine_Decision
+    default: true
+    outputs:
+      - key: scene
+        prompt: |
+          ## Important Details
+          - World : {{ world_detailed }}
+          - Protagonist : {{ user_detailed }}
+          - Major Antagonist : {{ antagonist_detailed }}
+
+          {% if scene_history | length != 0 -%}
+          ## Game Up until now:
+          {% for i in range(scene_history | length) -%}
+          Scene: {{ scene_history[i] }}
+          User Decision: {{ user_history[i] }}
+          Consequence: {{ consequence_history[i].consequence }}
+          ---
+          {% endfor -%}
+          {% endif -%}
+
+          ## Current Turn:
+          Concise Scene:
+        schema:
+          type: string
+        system_prompt: >
+          {{ default_system_prompt }}
+
+
+          The decision will lead to a consequence and the story will continue
+          from there.
+
+          Each decision a user can make needs to be in bold using markdown
+          notation. You are tasked with designing the next scene and decision
+          options for the protagonist to make. You want the story to end with a
+          showdown between the protagonist and antagonist but the protagonist
+          must make the right decisions to get there. If the protagonist makes
+          the wrong decisions, the story will end in failure.
+
+          Only respond in first person, present tense and a single concise
+          paragraph.
+      - key: scene_image
+        tool: text_to_image
+        route: /api/text-to-image
+        input_name_map:
+          model: lightning_xl
+          prompt: |
+            {{scene}}
+          provider: fal
+    trigger: continue
+  - dest: Game_Engine
+    after: game_decision
+    inputs:
+      - key: scene
+        schema:
+          type: string
+      - key: user_action
+        schema:
+          type: string
+        ui_type: textarea
+        description: What will you do next?
+      - key: user_history
+        schema:
+          type: array
+          items:
+            type: string
+      - key: scene_history
+        schema:
+          type: array
+          items:
+            type: string
+      - key: consequence_history
+        schema:
+          type: array
+          items:
+            type: string
+      - key: default_system_prompt
+        schema:
+          type: string
+    source: Game_Continue
+    outputs:
+      - key: user_action_consequence
+        prompt: |
+          {% if scene_history | length != 0 -%}
+          ## Game Up until now:
+          {% for i in range(scene_history | length) -%}
+          Scene: {{ scene_history[i] }}
+          User Decision: {{ user_history[i] }}
+          Consequence: {{ consequence_history[i] }}
+          {% endfor -%}
+          {% endif -%}
+
+          ## Current Scene:
+          Scene: {{ scene }}
+          User Decision: {{ user_action }}
+          Consequence:
+        schema:
+          type: object
+          properties:
+            action:
+              type: string
+              description: One of {"continue", "success", "failure"} based on the user's
+                action
+            consequence:
+              type: string
+              description: High level consequence of the user's action
+        model_config:
+          executor: openai
+          model_name: gpt-4o
+        system_prompt: >
+          {{ default_system_prompt }}
+
+          You now must provide a verdict on the protagonist's decision and the
+          consequence of that decision.
+
+          This must only be in valid JSON format and contain the action and
+          consequence.
+
+          The action must be one of {"continue", "success", "failure"}.
+
+          The action of success will end the game with a success message and
+          must only be used once the antagonist is defeated.
+
+          The action of failure will end the game with a failure message and
+          must only be used once the protagonist is defeated.
+
+          The action of continue will allow the game to continue and the user
+          will be prompted to make another decision.
+
+          The user is free to provide any answer but answers that are not
+          related to the scene will increase the chance of failure.
+
+          The consequence must be a high level description of the action within
+          2 sentences.
+      - jq: .user_action_consequence.action
+        key: consequence_key
+        schema:
+          type: string
+    trigger: user_action
+  - dest: Game_Engine_Decision
+    after: memory_key:consequence_key
+    inputs:
+      - key: scene
+        schema:
+          type: string
+      - key: user_action
+        schema:
+          type: string
+      - key: user_action_consequence
+        schema:
+          type: object
+          properties:
+            action:
+              type: string
+            consequence:
+              type: string
+    source: Game_Engine
+    outputs:
+      - key: user_history
+        append:
+          - user_action
+      - key: scene_history
+        append:
+          - scene
+      - key: consequence_history
+        append:
+          - user_action_consequence
+      - key: user_action
+        reset: true
+    trigger: game_decision
+initial_state: Describe_World_Characters
+initial_memory:
+  scene: ""
+  user_history: []
+  failure_scene: ""
+  scene_history: []
+  success_scene: ""
+  starting_scene: >
+    # Welcome, Hero!
+
+
+    The journey ahead is yours to shape. Will you explore mystical forests 🌲,
+    traverse treacherous mountains 🏔️, or uncover ancient secrets in forgotten
+    ruins 🏛️? Your decisions will guide your destiny.
+
+
+    ✨**To begin your adventure, start by describing yourself and the world
+    around you**✨      
+  failure_message: "## ☠️☠️ Total Failure ☠️☠️"
+  success_message: "## You have defeated the game!"
+  consequence_history: []
+  default_system_prompt: You are a world renown storyteller who loves to imagine
+    and write the most amazing fantasy worlds, characters and narratives. It is
+    highly important that you should never break character as this will damage
+    the customers user experience.
+default_model_config:
+  executor: togetherai
+  model_name: meta-llama/Llama-3-8b-chat-hf
+  temperature: 0.8
