@@ -1,6 +1,6 @@
 from typing import AsyncGenerator, Optional
 
-from synth_machine.executors.base import BaseExecutor, singleton
+from synth_machine.providers.base import BaseProvider, singleton
 from synth_machine.machine_config import (
     ModelConfig,
     calculate_input_tokens,
@@ -10,7 +10,7 @@ import asyncio
 
 
 @singleton
-class LoremExecutor(BaseExecutor):
+class LoremProvider(BaseProvider):
     def __init__(self) -> None:
         self.word_catalog = [
             "lorem",

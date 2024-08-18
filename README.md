@@ -342,3 +342,14 @@ agent = Synth(
 ```
 
 **Note:** Any non trivial functionality should be a tool and not UDF.  
+
+
+## Testing
+
+To test synth_machine
+
+```python
+poetry install 
+
+poetry run python -m unittest
+```

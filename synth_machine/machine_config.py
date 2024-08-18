@@ -4,7 +4,7 @@ import tiktoken
 
 
 class ModelConfig(BaseModel):
-    executor: Optional[str] = None
+    provider: Optional[str] = None
     llm_name: Optional[str] = None
     max_tokens: Optional[int] = None
     temperature: Optional[float] = None
@@ -18,7 +18,7 @@ class ModelConfig(BaseModel):
 
 default_model_config = ModelConfig(
     # Default values
-    executor="togetherai",
+    provider="togetherai",
     llm_name="mistralai/Mixtral-8x7B-Instruct-v0.1",
     max_tokens=1024,
     temperature=0.8,

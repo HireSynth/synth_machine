@@ -5,16 +5,16 @@ from openai.types.chat import (
     ChatCompletionNamedToolChoiceParam,
     ChatCompletionToolParam,
 )
-from synth_machine.executors.base import BaseExecutor, singleton
+from synth_machine.providers.base import BaseProvider, singleton
 from synth_machine.machine_config import (
     ModelConfig,
     calculate_input_tokens,
 )
-from synth_machine.executors import TOGETHER_API_KEY, DEBUG
+from synth_machine.providers import TOGETHER_API_KEY, DEBUG
 
 
 @singleton
-class TogetherAIExecutor(BaseExecutor):
+class TogetherAIProvider(BaseProvider):
     def __init__(self) -> None:
         self.client = AsyncOpenAI(
             api_key=TOGETHER_API_KEY, base_url="https://api.together.xyz"

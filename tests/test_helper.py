@@ -1,8 +1,8 @@
 import json
 import os
 
-from synth_machine.machine import Synth
-
+from synth_machine.machine import Synth, BaseCost, SynthParser
+from tests.test_mocks import MockProviderFactory
 
 class TestHelper:
     def __init__(self) -> None:
@@ -23,11 +23,17 @@ class TestHelper:
 
     def get_transistions(self, name: str) -> list:
         return self.transition.get(name, [])
-
+    
     def create_synth_machine(
         self, initial_state: str, states: list, transitions: list, memory: dict
     ) -> Synth:
-        return Synth(
+                
+        class MockSynth(Synth, BaseCost, SynthParser, MockProviderFactory):
+            def __init__(self, *args, **kwargs):
+                super().__init__(*args, **kwargs)
+                
+                
+        return MockSynth(
             config={
                 "initial_state": initial_state,
                 "states": states,

@@ -1,8 +1,8 @@
 from unittest import IsolatedAsyncioTestCase
 from tests.test_mocks import (
-    MockExecutor,
-    MockJsonParseFailureExecutor,
-    MockJsonExecutor,
+    MockProvider,
+    MockJsonParseFailureProvider,
+    MockJsonProvider,
 )
 from tests.test_helper import TestHelper
 from tests.test_utils import json_file_loader
@@ -33,9 +33,8 @@ class SynthMachineTest(IsolatedAsyncioTestCase):
         return (
             SynthConfig(
                 **{
-                    "executor": MockExecutor(),
                     "model_config": ModelConfig(
-                        executor="mock",
+                        provider="mock",
                     ),
                     "system_prompt": "",
                     "user_prompt": "",
@@ -48,9 +47,8 @@ class SynthMachineTest(IsolatedAsyncioTestCase):
         return (
             SynthConfig(
                 **{
-                    "executor": MockExecutor(),
                     "model_config": ModelConfig(
-                        executor="mock",
+                        provider="mock",
                     ),
                     "system_prompt": "",
                     "user_prompt": "",
@@ -63,9 +61,8 @@ class SynthMachineTest(IsolatedAsyncioTestCase):
         return (
             SynthConfig(
                 **{
-                    "executor": MockJsonExecutor(),
                     "model_config": ModelConfig(
-                        executor="mock",
+                        Provider="mock",
                     ),
                     "system_prompt": "",
                     "user_prompt": "",
@@ -78,9 +75,8 @@ class SynthMachineTest(IsolatedAsyncioTestCase):
         return (
             SynthConfig(
                 **{
-                    "executor": MockJsonParseFailureExecutor(),
                     "model_config": ModelConfig(
-                        executor="mock",
+                        Provider="mock",
                     ),
                     "system_prompt": "",
                     "user_prompt": "",

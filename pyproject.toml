@@ -42,6 +42,7 @@ pre-commit = "^3.6.2"
 pyright = "^1.1.326"
 pyyaml = "^6.0.1"
 ruff = "^0.5.0"
+jupyterlab = "^4.2.4"
 
 [tool.coverage.run]
 branch = true

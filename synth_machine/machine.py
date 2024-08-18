@@ -10,6 +10,7 @@ from object_store import ObjectStore
 from transitions import Machine
 
 from synth_machine.synth_parser import SynthParser, ParserOptions
+from synth_machine.provider_factory import ProviderFactory
 from synth_machine.operator_setup import (
     prompt_setup,
     prompt_for_transition,
@@ -47,7 +48,7 @@ class TransitionError(Exception):
     pass
 
 
-class Synth(BaseCost, SynthParser):
+class Synth(BaseCost, SynthParser, ProviderFactory):
     JSONSCHEMA_PRELUDE = {"$schema": "http://json-schema.org/draft-04/schema#"}
 
     def __init__(
@@ -62,6 +63,7 @@ class Synth(BaseCost, SynthParser):
         user_defined_functions: dict = {},
     ) -> None:
         super().__init__()
+        ProviderFactory.__init__(self)
         self.config = synth_definition_setup(config)
         self.user = user
         self.session_id = session_id
@@ -315,23 +317,32 @@ class Synth(BaseCost, SynthParser):
                     default_model_config=self.default_model_config,
                     transition_model_config=transition.config,  # type: ignore
                 )
+                provider = self.get_provider(llm_config.model_config.provider)
                 if err or not llm_config:
                     logging.error(err)
                     yield [FailureState.FAILED, output_key, err]
                     return
 
                 while True:
-                    executor = {"executor": llm_config.model_config.executor}
-                    yield [YieldTasks.MODEL_CONFIG, output_key, executor]
+                    
+                    provider, error = self.get_provider(llm_config.model_config.provider)
+                    if error:
+                        yield [
+                                FailureState.NOT_IMPLEMENTED,
+                                output_key,
+                                error
+                            ]
+                        break
+                    yield [YieldTasks.MODEL_CONFIG, output_key, {"provider": llm_config.model_config.provider}]
                     logging.debug(
-                        f"🤖 Execution started ({llm_config.model_config.executor})"
+                        f"🤖 Execution started ({provider})"
                     )
                     llm_name = llm_config.model_config.llm_name
                     tokens = {
                         "input": 0,
                         "output": 0,
                     }
-                    async for token, token_info in llm_config.executor.generate(
+                    async for token, token_info in provider.generate(
                         user_prompt=llm_config.user_prompt,
                         system_prompt=llm_config.system_prompt,
                         json_schema=schema,
@@ -374,7 +385,7 @@ class Synth(BaseCost, SynthParser):
                                 output_definition.parser,
                                 ParserOptions.JSON,
                             )(predicted)
-                            predicted_json = llm_config.executor.post_process(
+                            predicted_json = provider.post_process(
                                 parsed_response
                             )  # type: ignore
                             validate(

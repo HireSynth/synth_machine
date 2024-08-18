@@ -15,7 +15,7 @@ def singleton(cls):
     return getinstance
 
 
-class BaseExecutor:
+class BaseProvider:
     @staticmethod
     def post_process(output: dict) -> dict:
         raise NotImplementedError

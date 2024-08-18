@@ -1,11 +1,11 @@
 import logging
 from typing import AsyncGenerator, Optional
-from synth_machine.executors.base import BaseExecutor, singleton
+from synth_machine.providers.base import BaseProvider, singleton
 from synth_machine.machine_config import (
     ModelConfig,
     calculate_input_tokens,
 )
-from synth_machine.executors import ANTHROPIC_API_KEY, DEBUG
+from synth_machine.providers import ANTHROPIC_API_KEY, DEBUG
 from magika import Magika
 import anthropic
 import json
@@ -15,7 +15,7 @@ import time
 
 
 @singleton
-class AnthropicExecutor(BaseExecutor):
+class AnthropicProvider(BaseProvider):
     def __init__(self) -> None:
         self.client = anthropic.AsyncAnthropic(api_key=ANTHROPIC_API_KEY)  # type: ignore
         self.magika = Magika()

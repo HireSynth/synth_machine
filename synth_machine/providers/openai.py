@@ -5,16 +5,16 @@ from openai.types.chat import (
     ChatCompletionNamedToolChoiceParam,
     ChatCompletionToolParam,
 )
-from synth_machine.executors.base import BaseExecutor, singleton
+from synth_machine.providers.base import BaseProvider, singleton
 from synth_machine.machine_config import (
     ModelConfig,
     calculate_input_tokens,
 )
-from synth_machine.executors import OPENAI_API_KEY, DEBUG
+from synth_machine.providers import OPENAI_API_KEY, DEBUG
 
 
 @singleton
-class OpenAIExecutor(BaseExecutor):
+class OpenAIProvider(BaseProvider):
     def __init__(self) -> None:
         self.client = AsyncOpenAI(api_key=OPENAI_API_KEY)  # type: ignore
 

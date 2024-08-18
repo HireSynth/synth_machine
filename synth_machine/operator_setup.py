@@ -3,8 +3,6 @@ from dataclasses import dataclass
 from textwrap import dedent
 from typing import Optional, Tuple
 from jinja2 import Template, StrictUndefined
-from synth_machine.executor_factory import get_executor
-from synth_machine.executors.base import BaseExecutor
 from synth_machine.machine_config import ModelConfig
 from synth_machine.rag import RAGConfig
 from synth_machine.synth_definition import Output, Input
@@ -15,7 +13,6 @@ enc = tiktoken.get_encoding("cl100k_base")
 
 @dataclass
 class SynthConfig:
-    executor: BaseExecutor
     model_config: ModelConfig
     system_prompt: Optional[str]
     user_prompt: str
@@ -163,11 +160,9 @@ async def prompt_setup(
     )
 
     logging.debug(f"Model config {model_config}")
-    executor = get_executor(name=model_config.executor)  # type: ignore
 
     return (
         SynthConfig(
-            executor=executor,
             model_config=model_config,
             system_prompt=system_prompt,
             user_prompt=user_prompt,

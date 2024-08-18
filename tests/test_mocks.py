@@ -1,10 +1,10 @@
 from typing import AsyncGenerator, Optional
 
 from synth_machine.machine_config import ModelConfig
-from synth_machine.executors.base import BaseExecutor
+from synth_machine.providers.base import BaseProvider
 
 
-class MockExecutor(BaseExecutor):
+class MockProvider(BaseProvider):
     @staticmethod
     def post_process(output):
         return output
@@ -20,8 +20,7 @@ class MockExecutor(BaseExecutor):
         yield ("", {"tokens": 5, "token_type": "input"})
         yield ("You are an automated chicken", {"tokens": 1, "token_type": "output"})
 
-
-class MockJsonParseFailureExecutor(BaseExecutor):
+class MockJsonParseFailureProvider(BaseProvider):
     @staticmethod
     def post_process(output):
         return output
@@ -37,7 +36,7 @@ class MockJsonParseFailureExecutor(BaseExecutor):
         yield ('{"abc": "def"', {"tokens": 1, "token_type": "output"})
 
 
-class MockJsonExecutor(BaseExecutor):
+class MockJsonProvider(BaseProvider):
     @staticmethod
     def post_process(output):
         return output
@@ -51,3 +50,13 @@ class MockJsonExecutor(BaseExecutor):
         user: str = "",
     ) -> AsyncGenerator:
         yield ('{"abc": "def"}', {"tokens": 1, "token_type": "output"})
+
+class MockProviderFactory:
+    def __init__(self):
+        super().__init__()
+        self.providers = {
+            "mock": MockProvider,
+            "mock_json_parse_failure": MockJsonParseFailureProvider,
+            "mock_json": MockJsonProvider,
+             
+        }

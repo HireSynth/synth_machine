@@ -225,7 +225,7 @@ transitions:
     trigger: reset_to_url
 initial_state: intro
 default_model_config:
-  executor: openai
+  provider: openai
   llm_name: gpt-4o
   max_tokens: 4000
   temperature: 0.2

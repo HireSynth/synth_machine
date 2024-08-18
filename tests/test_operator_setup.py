@@ -2,7 +2,7 @@ from unittest import IsolatedAsyncioTestCase
 from synth_machine.synth_definition import Output
 from synth_machine import operator_setup
 from synth_machine.machine_config import ModelConfig
-from synth_machine.executors.lorem import LoremExecutor
+from synth_machine.providers.lorem import LoremProvider
 
 
 class TestConfig(IsolatedAsyncioTestCase):
@@ -16,7 +16,6 @@ class TestConfig(IsolatedAsyncioTestCase):
             ),
             inputs={},
             default_model_config=ModelConfig(
-                executor="lorem",
                 llm_name="test_llm",
                 max_tokens=1,
                 temperature=0.8,
@@ -32,9 +31,7 @@ class TestConfig(IsolatedAsyncioTestCase):
         self.assertFalse(err)
         self.assertEqual(
             operator_setup.SynthConfig(
-                executor=LoremExecutor(),
                 model_config=ModelConfig(
-                    executor="lorem",
                     llm_name="test_llm",
                     max_tokens=100,
                     temperature=0.3,
@@ -51,7 +48,6 @@ class TestConfig(IsolatedAsyncioTestCase):
 
     async def test_prompt_setup_model_config_only_default(self):
         default_model_config = ModelConfig(
-            executor="lorem",
             llm_name="test_llm",
             max_tokens=1,
             temperature=0.8,
@@ -75,7 +71,6 @@ class TestConfig(IsolatedAsyncioTestCase):
         self.assertFalse(err)
         self.assertEqual(
             operator_setup.SynthConfig(
-                executor=LoremExecutor(),
                 model_config=default_model_config,
                 system_prompt=None,
                 user_prompt="Count to 10",

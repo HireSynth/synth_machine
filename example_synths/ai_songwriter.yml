@@ -52,7 +52,7 @@ transitions:
           type: string
         model_config:
           temperature: 0.3
-          executor: togetherai
+          provider: togetherai
           llm_name: meta-llama/Llama-3-8b-chat-hf
         system_prompt: >
           As a world-class songwriter, your task is to analyze the provided
@@ -304,5 +304,5 @@ initial_memory:
        - Suggest ways to further develop or expand upon the perspective or point of view expressed in the lyrics.
        - Provide recommendations for strengthening the lyrics, such as improving word choice, clarifying the message, or enhancing the emotional impact.
 default_model_config:
-  executor: openai
+  provider: openai
   llm_name: gpt-4o
